@@ -1,13 +1,16 @@
 from src.cmesrc import config
 
 def test_data_dir():
-    assert config.data_dir.exists()
+    assert config.DATA_DIR.exists()
     
 def test_raw_data_dir():
-    assert config.raw_data_dir.exists()
+    assert config.RAW_DATA_DIR.exists()
     
 def test_interim_data_dir():
-    assert config.interim_data_dir.exists()
+    assert config.INTERIM_DATA_DIR.exists()
 
 def test_processed_data_dir():
-    assert config.processed_data_dir.exists()
+    assert config.PROCESSED_DATA_DIR.exists()
+
+def test_existence_raw_cme_catalogue():
+    assert config.RAW_LASCO_CME_CATALOGUE.exists()
