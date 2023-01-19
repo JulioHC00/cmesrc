@@ -60,7 +60,16 @@ test_environment:
 # PROJECT RULES                                                                 #
 #################################################################################
 
+.PHONY: all
+all: ./data/interim/harps_lifetime_database.csv ./data/interim/lasco_cme_database.csv
 
+## Create HARPS lifetime database
+./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py
+	python3 $<
+
+## Parse LASCO CME Database
+./data/interim/lasco_cme_database.csv: ./src/scripts/pre-processing/parse_lasco_cme_catalogue.py ./data/raw/lasco/univ_all.txt
+	python3 $<
 
 #################################################################################
 # Self Documenting Commands                                                     #
