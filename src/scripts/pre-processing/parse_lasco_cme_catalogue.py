@@ -23,7 +23,6 @@ def parse_lasco_cme_catalogue():
 
     # Pandas dataframe to hold the data
     finalDataFrame = pd.DataFrame(columns=["date",
-                                           "time",
                                            "pa",
                                            "width",
                                            "linear_speed",
@@ -105,8 +104,7 @@ def parse_lasco_cme_catalogue():
 
         # Now we build the dictionary which is the row that is added to the DataFrame
         newRow = {
-                "date": processed_columns[0],
-                "time": processed_columns[1],
+                "date": f"{processed_columns[0].replace('/','-')}T{processed_columns[1]}",
                 "pa": processed_columns[2],
                 "width": processed_columns[3],
                 "linear_speed": processed_columns[4],
