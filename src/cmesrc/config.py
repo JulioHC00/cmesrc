@@ -22,3 +22,4 @@ RAW_LASCO_CME_CATALOGUE = Path(LASCO_DATA_DIR.joinpath("./univ_all.txt"))
 
 HARPS_LIFETIME_DATABSE = Path(INTERIM_DATA_DIR.joinpath("./harps_lifetime_database.csv"))
 LASCO_CME_DATABASE = Path(INTERIM_DATA_DIR.joinpath("./lasco_cme_database.csv"))
+TEMPORAL_MATCHING_HARPS_DATABASE = Path(INTERIM_DATA_DIR.joinpath("./temporal_matching_harps_database.csv"))
