@@ -61,7 +61,7 @@ test_environment:
 #################################################################################
 
 .PHONY: all
-all: ./data/interim/harps_lifetime_database.csv ./data/interim/lasco_cme_database.csv
+all: ./data/interim/temporal_matching_harps_database.csv
 
 ## Create HARPS lifetime database
 ./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py
@@ -69,6 +69,9 @@ all: ./data/interim/harps_lifetime_database.csv ./data/interim/lasco_cme_databas
 
 ## Parse LASCO CME Database
 ./data/interim/lasco_cme_database.csv: ./src/scripts/pre-processing/parse_lasco_cme_catalogue.py ./data/raw/lasco/univ_all.txt
+	python3 $<
+
+./data/interim/temporal_matching_harps_database.csv: ./src/scripts/spatiotemporal_matching/temporal_matching.py ./data/interim/lasco_cme_database.csv ./data/interim/harps_lifetime_database.csv
 	python3 $<
 
 #################################################################################
