@@ -1,9 +1,9 @@
 from pathlib import Path
+from os.path import dirname, abspath
 
 # Paths to directories
 
-CONFIG_PARENT_DIR_PATH = Path(__file__).parent
-ROOT = CONFIG_PARENT_DIR_PATH.joinpath(Path("../../"))
+ROOT = Path(dirname(abspath("requirements.txt")))
 
 DATA_DIR = ROOT.joinpath(Path("data/"))
 RAW_DATA_DIR = DATA_DIR.joinpath("./raw/")
