@@ -1,30 +1,29 @@
 from src.cmesrc import config
-from os.path import exists
 
 def test_data_dir():
-    assert exists(config.DATA_DIR)
+    assert config.DATA_DIR.exists()
     
 def test_raw_data_dir():
-    assert exists(config.RAW_DATA_DIR)
+    assert config.RAW_DATA_DIR.exists()
     
 def test_interim_data_dir():
-    assert exists(config.INTERIM_DATA_DIR)
+    assert config.INTERIM_DATA_DIR.exists()
 
 def test_processed_data_dir():
-    assert exists(config.PROCESSED_DATA_DIR)
+    assert config.PROCESSED_DATA_DIR.exists()
 
 def test_existence_raw_cme_catalogue():
-    assert exists(config.RAW_LASCO_CME_CATALOGUE)
+    assert config.RAW_LASCO_CME_CATALOGUE.exists()
 
 def test_existence_LASCO_dir():
-    assert exists(config.LASCO_DATA_DIR)
+    assert config.LASCO_DATA_DIR.exists()
 
 def test_existence_MVTS_dir():
-    assert exists(config.MVTS_DATA_DIR)
+    assert config.MVTS_DATA_DIR.exists()
 
 def test_existence_SWAN_dir():
-    assert exists(config.SWAN_DATA_DIR)
+    assert config.SWAN_DATA_DIR.exists()
 
 def test_existence_partitions_dir():
-    assert exists(config.PARTITIONS_DATA_DIR)
+    assert config.PARTITIONS_DATA_DIR.exists()
 
