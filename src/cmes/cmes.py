@@ -45,7 +45,7 @@ class CME:
         self.HALO_MAX_DIST_TO_SUN_CENTRE = 0.2 # How far harps can be from Sun centre to be consistent with HALO CME
         self.WIDTH_EXTRA_ANGLE = 10 # Extra angle to sides of CME for Spatial co-ocurrence
 
-    def calculateApproximateLinearTimeAtSunCentre(self):
+    def calculateApproximateLinearTimeAtSunCentre(self) -> Time:
         # The LASCO CME catalogue is not clear
         # They say detection time is first seen in C2
         # But then some are seen only in C3?
