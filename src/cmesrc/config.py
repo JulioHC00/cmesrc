@@ -1,25 +1,25 @@
 from pathlib import Path
+import os.path
 
 # Paths to directories
 
-CONFIG_PARENT_DIR_PATH = Path(__file__).parent
-ROOT = CONFIG_PARENT_DIR_PATH.joinpath(Path("../../"))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-DATA_DIR = Path(ROOT.joinpath(Path("data/")))
-RAW_DATA_DIR = Path(DATA_DIR.joinpath(Path("./raw/")))
-INTERIM_DATA_DIR = Path(DATA_DIR.joinpath(Path("./interim/")))
-PROCESSED_DATA_DIR = Path(DATA_DIR.joinpath(Path("./processed/")))
-LASCO_DATA_DIR = Path(RAW_DATA_DIR.joinpath(Path("./lasco/")))
-MVTS_DATA_DIR = Path(RAW_DATA_DIR.joinpath(Path("./mvts/")))
-SWAN_DATA_DIR = Path(MVTS_DATA_DIR.joinpath(Path("./SWAN/")))
-PARTITIONS_DATA_DIR = Path(MVTS_DATA_DIR.joinpath(Path("./partitions/")))
+DATA_DIR = os.path.join(ROOT, "data/")
+RAW_DATA_DIR = os.path.join(DATA_DIR, "raw/")
+INTERIM_DATA_DIR = os.path.join(DATA_DIR, "interim/")
+PROCESSED_DATA_DIR = os.path.join(DATA_DIR, "processed/")
+LASCO_DATA_DIR = os.path.join(RAW_DATA_DIR, "lasco/")
+MVTS_DATA_DIR = os.path.join(RAW_DATA_DIR, "mvts/")
+SWAN_DATA_DIR = os.path.join(MVTS_DATA_DIR, "SWAN/")
+PARTITIONS_DATA_DIR = os.path.join(MVTS_DATA_DIR, "partitions/")
 
 # Raw data files
 
-RAW_LASCO_CME_CATALOGUE = Path(LASCO_DATA_DIR.joinpath("./univ_all.txt"))
+RAW_LASCO_CME_CATALOGUE = os.path.join(LASCO_DATA_DIR, "univ_all.txt")
 
 # Interim data files
 
-HARPS_LIFETIME_DATABSE = Path(INTERIM_DATA_DIR.joinpath("./harps_lifetime_database.csv"))
-LASCO_CME_DATABASE = Path(INTERIM_DATA_DIR.joinpath("./lasco_cme_database.csv"))
-TEMPORAL_MATCHING_HARPS_DATABASE = Path(INTERIM_DATA_DIR.joinpath("./temporal_matching_harps_database.csv"))
+HARPS_LIFETIME_DATABSE = os.path.join(INTERIM_DATA_DIR, "harps_lifetime_database.csv")
+LASCO_CME_DATABASE = os.path.join(INTERIM_DATA_DIR, "lasco_cme_database.csv")
+TEMPORAL_MATCHING_HARPS_DATABASE = os.path.join(INTERIM_DATA_DIR, "temporal_matching_harps_database.csv")
