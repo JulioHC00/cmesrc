@@ -2,16 +2,14 @@
 Parses the .txt file of the LASCO CME catalogue into a .csv format
 """
 
-from src.cmesrc.config import LASCO_DATA_DIR, INTERIM_DATA_DIR, LASCO_CME_DATABASE
+from src.cmesrc.config import RAW_LASCO_CME_CATALOGUE, INTERIM_DATA_DIR, LASCO_CME_DATABASE
 import pandas as pd
 import re
 from pathlib import Path
 import os.path
 
 def parse_lasco_cme_catalogue():
-    FILEPATH = Path(LASCO_DATA_DIR.joinpath(Path("./univ_all.txt")))
-
-    with open(FILEPATH, "r") as file:
+    with open(RAW_LASCO_CME_CATALOGUE, "r") as file:
         lines = file.readlines()
 
     # Remove header
@@ -22,7 +20,8 @@ def parse_lasco_cme_catalogue():
     data = [line[:101] for line in lines]
 
     # Pandas dataframe to hold the data
-    finalDataFrame = pd.DataFrame(columns=["date",
+    finalDataFrame = pd.DataFrame(columns=["id",
+                                           "date",
                                            "pa",
                                            "width",
                                            "linear_speed",
@@ -104,6 +103,7 @@ def parse_lasco_cme_catalogue():
 
         # Now we build the dictionary which is the row that is added to the DataFrame
         newRow = {
+                "id": f"{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}",
                 "date": f"{processed_columns[0].replace('/','-')}T{processed_columns[1]}",
                 "pa": processed_columns[2],
                 "width": processed_columns[3],
