@@ -59,9 +59,9 @@ class CME:
             
 
 
-    def hasHarpsSpatialCoOcurrence(self, harps: Harps) -> bool:
+    def hasHarpsSpatialCoOcurrence(self, harps: Harps, max_time_diff = 12 * u.min) -> bool:
         # Check times
-        if np.abs(harps.T_REC - self.DATE) > 12 * u.min:
+        if np.abs(harps.T_REC - self.DATE) > max_time_diff:
             raise MissmatchInTimes(harps.T_REC, self.DATE)
 
         if self.HALO:
