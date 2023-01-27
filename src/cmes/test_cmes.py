@@ -2,6 +2,7 @@ import pytest
 from src.cmes.cmes import CME, MissmatchInTimes
 from src.harps.harps import Harps
 from astropy.time import Time
+import astropy.units as u
 import numpy as np
 
 DATE = "2000-12-23T12:00:00"
@@ -62,3 +63,30 @@ def test_HALO_cme_harps_NO_co_ocurrence():
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
     assert not cme.hasHarpsSpatialCoOcurrence(harps)
+
+LINEAR_SPEED = 100
+def test_linear_time_sun_centre_seen_c2():
+    cme = CME(DATE, PA, WIDTH, LINEAR_SPEED)
+
+    time_at_sun_centre = Time(DATE) - (1.5 * u.Rsun / (LINEAR_SPEED * u.km / u.s)).decompose()
+
+    assert cme.LINEAR_TIME_AT_SUN_CENTER == time_at_sun_centre
+
+def test_linear_time_sun_centre_seen_ONLY_c2():
+    cme = CME(DATE, PA, WIDTH, LINEAR_SPEED)
+
+    time_at_sun_centre = Time(DATE) - (1.5 * u.Rsun / (LINEAR_SPEED * u.km / u.s)).decompose()
+
+    assert cme.LINEAR_TIME_AT_SUN_CENTER == time_at_sun_centre
+
+def test_linear_time_sun_centre_seen_ONLY_c3():
+    cme = CME(DATE, PA, WIDTH, LINEAR_SPEED, seen_only_in=2)
+
+    time_at_sun_centre = Time(DATE) - (3.7 * u.Rsun / (LINEAR_SPEED * u.km / u.s)).decompose()
+
+    assert cme.LINEAR_TIME_AT_SUN_CENTER == time_at_sun_centre
+
+def test_linear_time_sun_centre_no_speed_provided():
+    cme = CME(DATE, PA, WIDTH, seen_only_in=2)
+
+    assert cme.LINEAR_TIME_AT_SUN_CENTER is None

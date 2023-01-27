@@ -17,7 +17,7 @@ class MissmatchInTimes(Exception):
 
 
 class CME:
-    def __init__(self, date, PA, width, halo: bool = False):
+    def __init__(self, date, PA, width, linear_speed = None, halo: bool = False, seen_only_in: int = 0):
 
         if width > 360:
             raise ValueError(f"Width {width} must be <= 360 deg.")
@@ -33,8 +33,31 @@ class CME:
         self.DATE = Time(date)
         self.WIDTH = float(width)
         self.HALO = halo
+        
+        if linear_speed is None:
+            self.LINEAR_SPEED = None
+        else:
+            self.LINEAR_SPEED = float(linear_speed) * u.km / u.s
+
+        self.SEEN_ONLY_IN = seen_only_in
+        self.LINEAR_TIME_AT_SUN_CENTER = self.calculateApproximateLinearTimeAtSunCentre()
+
         self.HALO_MAX_DIST_TO_SUN_CENTRE = 0.2 # How far harps can be from Sun centre to be consistent with HALO CME
         self.WIDTH_EXTRA_ANGLE = 10 # Extra angle to sides of CME for Spatial co-ocurrence
+
+    def calculateApproximateLinearTimeAtSunCentre(self):
+        # The LASCO CME catalogue is not clear
+        # They say detection time is first seen in C2
+        # But then some are seen only in C3?
+        # I'll assume if seen only in C3 then time is at edge of C3
+        if self.LINEAR_SPEED is None:
+            return None
+        elif self.SEEN_ONLY_IN == 2:
+            return self.DATE - (3.7 * u.Rsun / self.LINEAR_SPEED).decompose()
+        else:
+            return self.DATE - (1.5 * u.Rsun / self.LINEAR_SPEED).decompose()
+            
+
 
     def hasHarpsSpatialCoOcurrence(self, harps: Harps) -> bool:
         # Check times
