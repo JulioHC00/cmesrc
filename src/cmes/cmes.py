@@ -7,12 +7,14 @@ class MissmatchInTimes(Exception):
     """
     Raised when Harps and CME recording time are different by more than 12 min"
     """
-    def __init__(self, HARPS_TIME: Time, CME_TIME: Time):
-        self.HARPS_TIME = HARPS_TIME
-        self.CME_TIME = CME_TIME
+    def __init__(self, HARPS, CME, MAX_DIFF_ALLOWED):
+        self.HARPS_TIME = HARPS.T_REC
+        self.CME_TIME = CME.DATE
         self.TIME_DIFFERENCE = np.abs(self.HARPS_TIME - self.CME_TIME).to_value(u.min)
+        self.MAX_DIFF_ALLOWED = MAX_DIFF_ALLOWED
+        self.HARPNUM = HARPS.HARPNUM
 
-        self.message = f"HARPS position with date {self.HARPS_TIME} is more than 12m. ({self.TIME_DIFFERENCE:.2f} min.) away from the CME observation time {self.CME_TIME}"
+        self.message = f"HARPS (HARPNUM {self.HARPNUM}) position with date {self.HARPS_TIME} is more than {self.MAX_DIFF_ALLOWED}. ({self.TIME_DIFFERENCE:.2f} min.) away from the CME observation time {self.CME_TIME}"
         super().__init__(self.message)
 
 
@@ -62,7 +64,7 @@ class CME:
     def hasHarpsSpatialCoOcurrence(self, harps: Harps, max_time_diff = 12 * u.min) -> bool:
         # Check times
         if np.abs(harps.T_REC - self.DATE) > max_time_diff:
-            raise MissmatchInTimes(harps.T_REC, self.DATE)
+            raise MissmatchInTimes(harps, self, max_time_diff)
 
         if self.HALO:
             if harps.DISTANCE_TO_SUN_CENTRE < self.HALO_MAX_DIST_TO_SUN_CENTRE:
