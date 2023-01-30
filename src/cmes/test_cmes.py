@@ -5,7 +5,7 @@ from astropy.time import Time
 import astropy.units as u
 import numpy as np
 
-DATE = "2000-12-23T12:00:00"
+DATE = "2000-12-23 12:00:00"
 PA = 23
 WIDTH = 100
 
@@ -21,7 +21,7 @@ def test_cme_initialization():
 
     assert np.all(tests)
 
-HARPS_DATE = "2000-12-23T12:11:00"
+HARPS_DATE = "2000-12-23 12:11:00"
 MIN_LON = -25
 MIN_LAT = 23
 MAX_LON =  -20
