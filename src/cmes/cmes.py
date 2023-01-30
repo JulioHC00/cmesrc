@@ -61,15 +61,27 @@ class CME:
             
 
 
-    def hasHarpsSpatialCoOcurrence(self, harps: Harps, max_time_diff = 12 * u.min) -> bool:
+    def hasHarpsSpatialCoOcurrence(self, harps: Harps, max_time_diff = 12 * u.min) -> tuple:
+        rotated = False
+        rotated_by = 0
+
+        # Use approximate time at sun centre, if not available use original CME date
+        CME_DATE = self.LINEAR_TIME_AT_SUN_CENTER
+        if CME_DATE is None:
+            CME_DATE = self.DATE
+
         # Check times
-        if np.abs(harps.T_REC - self.DATE) > max_time_diff:
-            raise MissmatchInTimes(harps, self, max_time_diff)
+        if np.abs(harps.T_REC - CME_DATE) > max_time_diff:
+            final_harps = harps.rotate_coords(CME_DATE)
+            rotated = True
+            rotated_by = (CME_DATE - harps.T_REC).to(u.min).value
+        else:
+            final_harps = harps
 
         if self.HALO:
             if harps.DISTANCE_TO_SUN_CENTRE < self.HALO_MAX_DIST_TO_SUN_CENTRE:
-                return True
-            return False
+                return True, rotated, rotated_by
+            return False, rotated, rotated_by
 
         harps_angle_dist_to_PA = np.abs(harps.POSITION_ANGLE - self.PA)
 
@@ -79,5 +91,5 @@ class CME:
 
         # Must be within the width plus 10 deg.
         if harps_angle_dist_to_PA < (self.WIDTH / 2 + 10):
-            return True
-        return False
+            return True, rotated, rotated_by
+        return False, rotated, rotated_by

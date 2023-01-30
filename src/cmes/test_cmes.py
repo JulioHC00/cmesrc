@@ -31,8 +31,9 @@ def test_cme_harps_co_ocurrence():
     cme = CME(DATE, PA, WIDTH)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
+    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
 
-    assert cme.hasHarpsSpatialCoOcurrence(harps)
+    assert has_harps
 
 def test_cme_harps_NO_co_ocurrence():
     MIN_LON = 20
@@ -42,7 +43,9 @@ def test_cme_harps_NO_co_ocurrence():
     cme = CME(DATE, PA, WIDTH)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    assert not cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+
+    assert not has_harps
 
 def test_HALO_cme_harps_co_ocurrence():
     MIN_LON = 5
@@ -52,7 +55,9 @@ def test_HALO_cme_harps_co_ocurrence():
     cme = CME(DATE, None, WIDTH, halo=True)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    assert cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+
+    assert has_harps
 
 def test_HALO_cme_harps_NO_co_ocurrence():
     MIN_LON = 80
@@ -62,7 +67,9 @@ def test_HALO_cme_harps_NO_co_ocurrence():
     cme = CME(DATE, None, WIDTH, halo=True)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    assert not cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+
+    assert not has_harps
 
 LINEAR_SPEED = 100
 def test_linear_time_sun_centre_seen_c2():
@@ -90,3 +97,32 @@ def test_linear_time_sun_centre_no_speed_provided():
     cme = CME(DATE, PA, WIDTH, seen_only_in=2)
 
     assert cme.LINEAR_TIME_AT_SUN_CENTER is None
+
+def test_rotation_harps_co_ocurrence():
+    HARPS_DATE = "2000-12-23 12:13:00"
+    cme = CME(DATE, PA, WIDTH)
+    harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
+
+    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+
+    assert np.all([has_harps, rotated])
+
+def test_rotation_harps_NO_co_ocurrence():
+    HARPS_DATE = "2000-12-10 12:13:00"
+    cme = CME(DATE, PA, WIDTH)
+    harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
+
+    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+
+    assert np.all([has_harps, rotated])
+
+def test_rotated_by_harps_co_ocurrence():
+    HARPS_DATE = "2000-12-23 12:13:00"
+    cme = CME(DATE, PA, WIDTH)
+    harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
+
+    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+
+    true_rotated_by = -13 
+
+    assert np.isclose(rotated_by, true_rotated_by)
