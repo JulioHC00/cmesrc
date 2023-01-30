@@ -20,12 +20,13 @@ class InvalidBoundingBox(Exception):
         
 
 class Harps:
-    def __init__(self, T_REC, LON_MIN, LAT_MIN, LON_MAX, LAT_MAX):
+    def __init__(self, T_REC, LON_MIN, LAT_MIN, LON_MAX, LAT_MAX, HARPNUM=None):
         self.T_REC = Time(T_REC)
         self.LON_MIN = float(LON_MIN)
         self.LAT_MIN = float(LAT_MIN)
         self.LON_MAX = float(LON_MAX)
         self.LAT_MAX = float(LAT_MAX)
+        self.HARPNUM = HARPNUM
 
         self.__check_input_coordinates()
 
