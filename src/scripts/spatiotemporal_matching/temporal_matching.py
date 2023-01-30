@@ -3,7 +3,7 @@ Will match CMEs with HARPS regions that were present on-disk at the time of the 
 HERE THE LASCO CME DATABASE IS MASKED TO ONLY CMES WITHOUT POOR OR VERY POOR DESCRIPTIONS AND NO N POINTS WARNINGS
 """
 
-from src.cmesrc.config import LASCO_CME_DATABASE, HARPS_LIFETIME_DATABSE, TEMPORAL_MATCHING_HARPS_DATABASE
+from src.cmesrc.config import LASCO_CME_DATABASE, HARPS_LIFETIME_DATABSE, TEMPORAL_MATCHING_HARPS_DATABASE, TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE
 import numpy as np
 from tqdm import tqdm
 from astropy.time import Time
@@ -51,7 +51,7 @@ def findAllMatchingRegions():
 
     temporal_matching_harps_database = pd.DataFrame.from_records(full_list_of_matches)
     temporal_matching_harps_database.to_csv(TEMPORAL_MATCHING_HARPS_DATABASE, index=False)
-    temporal_matching_harps_database.to_pickle(TEMPORAL_MATCHING_HARPS_DATABASE.split(".")[0] + ".pkl")
+    temporal_matching_harps_database.to_pickle(TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
 
 if __name__ == "__main__":
     findAllMatchingRegions()
