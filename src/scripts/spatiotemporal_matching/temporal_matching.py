@@ -51,6 +51,7 @@ def findAllMatchingRegions():
 
     temporal_matching_harps_database = pd.DataFrame.from_records(full_list_of_matches)
     temporal_matching_harps_database.to_csv(TEMPORAL_MATCHING_HARPS_DATABASE, index=False)
+    temporal_matching_harps_database.to_pickle(TEMPORAL_MATCHING_HARPS_DATABASE.split(".")[0] + ".pkl")
 
 if __name__ == "__main__":
     findAllMatchingRegions()

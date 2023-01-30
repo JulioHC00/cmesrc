@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 def test_good_initialization_of_harps():
-    TIME = "2000-12-23T12:00:00"
+    TIME = "2000-12-23 12:00:00"
     LON_MIN = 23
     LAT_MIN = 24
     LON_MAX = 26
@@ -23,7 +23,7 @@ def test_good_initialization_of_harps():
     assert test
 
 def test_invalid_bounding_box():
-    TIME = "2000-12-23T12:00:00"
+    TIME = "2000-12-23 12:00:00"
     LON_MIN = 23
     LAT_MIN = 20
     LON_MAX = 20
@@ -33,7 +33,7 @@ def test_invalid_bounding_box():
         Harps(TIME, LON_MIN, LAT_MIN, LON_MAX, LAT_MAX)
 
 
-TIME = "2000-12-23T12:00:00"
+TIME = "2000-12-23 12:00:00"
 LON_MIN = 10
 LAT_MIN = 20
 LON_MAX = 30

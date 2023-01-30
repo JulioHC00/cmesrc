@@ -21,7 +21,7 @@ class InvalidBoundingBox(Exception):
 
 class Harps:
     def __init__(self, T_REC, LON_MIN, LAT_MIN, LON_MAX, LAT_MAX, HARPNUM=None):
-        self.T_REC = Time(T_REC)
+        self.T_REC = Time(T_REC, format="iso")
         self.LON_MIN = float(LON_MIN)
         self.LAT_MIN = float(LAT_MIN)
         self.LON_MAX = float(LON_MAX)

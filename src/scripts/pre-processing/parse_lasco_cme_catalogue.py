@@ -104,7 +104,7 @@ def parse_lasco_cme_catalogue():
         # Now we build the dictionary which is the row that is added to the DataFrame
         newRow = {
                 "id": f"{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}",
-                "date": f"{processed_columns[0].replace('/','-')}T{processed_columns[1]}",
+                "date": f"{processed_columns[0].replace('/','-')} {processed_columns[1]}", # ISO
                 "pa": processed_columns[2],
                 "width": processed_columns[3],
                 "linear_speed": processed_columns[4],

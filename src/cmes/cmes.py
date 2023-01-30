@@ -32,7 +32,7 @@ class CME:
 
             self.PA = float(PA)
 
-        self.DATE = Time(date)
+        self.DATE = Time(date, format="iso")
         self.WIDTH = float(width)
         self.HALO = halo
         
