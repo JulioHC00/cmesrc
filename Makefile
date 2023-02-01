@@ -61,7 +61,7 @@ test_environment:
 #################################################################################
 
 .PHONY: all
-all: ./data/interim/temporal_matching_harps_database.csv
+all: ./data/interim/spatiotemporal_matching_harps_database.csv
 
 ## Create HARPS lifetime database
 ./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py
@@ -72,6 +72,9 @@ all: ./data/interim/temporal_matching_harps_database.csv
 	python3 $<
 
 ./data/interim/temporal_matching_harps_database.csv: ./src/scripts/spatiotemporal_matching/temporal_matching.py ./data/interim/lasco_cme_database.csv ./data/interim/harps_lifetime_database.csv
+	python3 $<
+
+./data/interim/spatiotemporal_matching_harps_database.csv: ./src/scripts/spatiotemporal_matching/spatial_matching.py ./data/interim/temporal_matching_harps_database.csv
 	python3 $<
 
 #################################################################################
