@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import astropy.units as u
-from src.cmesrc.classes import Point, BoundingBox
+from src.cmesrc.classes import Point, BoundingBox, RotatedBoundingBox
 from src.cmesrc.exception_classes import InvalidBoundingBox
 from sunpy.coordinates import HeliographicStonyhurst, propagate_with_solar_surface
 from astropy.coordinates import SkyCoord
@@ -441,3 +441,14 @@ def test_rotate_bbox_inplace():
         bbox.CENTRE_POINT == original_centre
         ])
 
+def test_rotated_boundingbox_exception():
+    bbox = RotatedBoundingBox(
+            date = DATE,
+            lon_min = LON_MIN,
+            lat_min = LAT_MIN,
+            lon_max = LON_MAX,
+            lat_max = LAT_MAX
+            )
+
+    with pytest.raises(TypeError):
+        bbox.rotate_bbox(DATE2)

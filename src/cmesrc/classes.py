@@ -222,3 +222,17 @@ class BoundingBox():
                 lat_max = new_upper_right.LAT,
                 units = self.UNITS
                 )
+
+class RotatedBoundingBox(BoundingBox):
+    def __init__(self, date, lon_min: float, lat_min: float, lon_max: float, lat_max: float, units: str="deg"):
+        super().__init__(
+                date=date,
+                lon_min=lon_min,
+                lat_min=lat_min,
+                lon_max=lon_max,
+                lat_max=lat_max,
+                units=units
+                )
+
+    def rotate_bbox(self, date, inplace:bool = False):
+        raise TypeError("Can't rotate a RotatedBoundingBox")
