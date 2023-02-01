@@ -102,6 +102,7 @@ def findSpatialCoOcurrentHarps():
                 new_row["harps_distance_to_sun_centre"] = out_harps.get_distance_to_sun_centre()
                 new_row["harps_rotated"] = int(is_harps_rotated)
                 new_row["harps_rotated_by"] = harps_rotated_by
+                new_row["cme_time_at_sun_centre"] = cme.calculateApproximateLinearTimeAtSunCentre()
 
                 final_database_rows.append(new_row)
 
