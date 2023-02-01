@@ -71,19 +71,19 @@ class CME:
             CME_DATE = self.DATE
 
         # Check times
-        if np.abs(harps.T_REC - CME_DATE) > max_time_diff:
-            final_harps = harps.rotate_coords(CME_DATE)
+        if np.abs(harps.DATE - CME_DATE) > max_time_diff:
+            final_harps = harps.rotate_bbox(CME_DATE)
             rotated = True
-            rotated_by = (CME_DATE - harps.T_REC).to(u.min).value
+            rotated_by = (CME_DATE - harps.DATE).to(u.min).value
         else:
             final_harps = harps
 
         if self.HALO:
-            if harps.DISTANCE_TO_SUN_CENTRE < self.HALO_MAX_DIST_TO_SUN_CENTRE:
-                return True, rotated, rotated_by
-            return False, rotated, rotated_by
+            if harps.get_distance_to_sun_centre() < self.HALO_MAX_DIST_TO_SUN_CENTRE:
+                return True, rotated, rotated_by, final_harps
+            return False, rotated, rotated_by, final_harps
 
-        harps_angle_dist_to_PA = np.abs(harps.POSITION_ANGLE - self.PA)
+        harps_angle_dist_to_PA = np.abs(harps.get_position_angle() - self.PA)
 
         # If the angle distance is larger than 180, then take the other side (360 - >180) is the smaller angle.
         if harps_angle_dist_to_PA > 180:
@@ -91,5 +91,5 @@ class CME:
 
         # Must be within the width plus 10 deg.
         if harps_angle_dist_to_PA < (self.WIDTH / 2 + 10):
-            return True, rotated, rotated_by
-        return False, rotated, rotated_by
+            return True, rotated, rotated_by, final_harps
+        return False, rotated, rotated_by, final_harps

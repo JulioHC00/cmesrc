@@ -31,7 +31,7 @@ def test_cme_harps_co_ocurrence():
     cme = CME(DATE, PA, WIDTH)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
     assert has_harps
 
@@ -43,7 +43,7 @@ def test_cme_harps_NO_co_ocurrence():
     cme = CME(DATE, PA, WIDTH)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
     assert not has_harps
 
@@ -55,7 +55,7 @@ def test_HALO_cme_harps_co_ocurrence():
     cme = CME(DATE, None, WIDTH, halo=True)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
     assert has_harps
 
@@ -67,7 +67,7 @@ def test_HALO_cme_harps_NO_co_ocurrence():
     cme = CME(DATE, None, WIDTH, halo=True)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
     assert not has_harps
 
@@ -103,7 +103,7 @@ def test_rotation_harps_co_ocurrence():
     cme = CME(DATE, PA, WIDTH)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
     assert np.all([has_harps, rotated])
 
@@ -112,7 +112,7 @@ def test_rotation_harps_NO_co_ocurrence():
     cme = CME(DATE, PA, WIDTH)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
     assert np.all([has_harps, rotated])
 
@@ -121,7 +121,7 @@ def test_rotated_by_harps_co_ocurrence():
     cme = CME(DATE, PA, WIDTH)
     harps = Harps(HARPS_DATE, MIN_LON, MIN_LAT, MAX_LON, MAX_LAT)
 
-    has_harps, rotated, rotated_by = cme.hasHarpsSpatialCoOcurrence(harps)
+    has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
     true_rotated_by = -13 
 
