@@ -28,3 +28,7 @@ TEMPORAL_MATCHING_HARPS_DATABASE = os.path.join(INTERIM_DATA_DIR, "temporal_matc
 TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "temporal_matching_harps_database.pkl")
 SPATIOTEMPORAL_MATCHING_HARPS_DATABASE = os.path.join(INTERIM_DATA_DIR, "spatiotemporal_matching_harps_database.csv")
 SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "spatiotemporal_matching_harps_database.pkl")
+TEMPORAL_MATCHING_DIMMINGS_DATABASE = os.path.join(INTERIM_DATA_DIR, "temporal_matching_dimmings_database.csv")
+TEMPORAL_MATCHING_DIMMINGS_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "temporal_matching_dimmings_database.pkl")
+HARPS_MATCHING_DIMMINGS_DATABASE = os.path.join(INTERIM_DATA_DIR, "harps_matching_dimmings_database.csv")
+HARPS_MATCHING_DIMMINGS_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "harps_matching_dimmings_database.pkl")
