@@ -194,6 +194,9 @@ class BoundingBox():
     def get_raw_bbox(self):
         return [self.LOWER_LEFT.get_raw_coords(), self.UPPER_RIGHT.get_raw_coords()]
 
+    def get_cartesian_bbox(self):
+        return [self.LOWER_LEFT.get_cartesian_coords(), self.UPPER_RIGHT.get_cartesian_coords()]
+
     def get_skycoord_bbox(self):
         return SkyCoord(self.get_raw_bbox(), unit=self.UNITS, frame=self.FRAME)
 
@@ -222,6 +225,106 @@ class BoundingBox():
                 lat_max = new_upper_right.LAT,
                 units = self.UNITS
                 )
+
+    def is_point_inside(self, point: Point):
+        if (
+                ((self.LOWER_LEFT.LON < point.LON) & (self.LOWER_LEFT.LAT < point.LAT)) & 
+                ((self.UPPER_RIGHT.LON > point.LON) & (self.UPPER_RIGHT.LAT > point.LAT))
+                ):
+            return True
+        else:
+            return False
+
+    def get_projected_point_distance(self, point: Point):
+        if self.is_point_inside(point):
+            return 0
+
+        rotated_bbox = self.rotate_bbox(point.DATE)
+        bbox_coords = [rotated_bbox.LOWER_LEFT.get_cartesian_coords(), rotated_bbox.UPPER_RIGHT.get_cartesian_coords()]
+        point_coords = point.get_cartesian_coords()
+
+        if point_coords[0] < bbox_coords[0][0]:
+            if point_coords[1] < bbox_coords[0][1]:
+                return np.sqrt(
+                        (bbox_coords[0][0] - point_coords[0]) ** 2 +
+                        (bbox_coords[0][1] - point_coords[1]) ** 2
+                        )
+            elif point_coords[1] > bbox_coords[1][1]:
+                return np.sqrt(
+                        (bbox_coords[0][0] - point_coords[0]) ** 2 +
+                        (bbox_coords[1][1] - point_coords[1]) ** 2
+                        )
+            else:
+                return bbox_coords[0][0] - point_coords[0]
+        elif point_coords[0] > bbox_coords[1][0]:
+            if point_coords[1] < bbox_coords[0][1]:
+                return np.sqrt(
+                        (bbox_coords[1][0] - point_coords[0]) ** 2 +
+                        (bbox_coords[0][1] - point_coords[1]) ** 2
+                        )
+            elif point_coords[1] > bbox_coords[1][1]:
+                return np.sqrt(
+                        (bbox_coords[1][0] - point_coords[0]) ** 2 +
+                        (bbox_coords[1][1] - point_coords[1]) ** 2
+                        )
+            else:
+                return point_coords[0] - bbox_coords[1][0]
+        elif point_coords[1] > bbox_coords[1][1]:
+            return point_coords[1] - bbox_coords[1][1]
+        else:
+            return bbox_coords[0][1] - point_coords[1]
+        
+    def get_angular_point_distance(self, point: Point):
+        if self.is_point_inside(point):
+            return [0,0]
+
+        bbox_coords = self.rotate_bbox(point.DATE).get_raw_bbox()
+        point_coords = point.get_raw_coords()
+
+        if point_coords[0] < bbox_coords[0][0]:
+            if point_coords[1] < bbox_coords[0][1]:
+                return [ 
+                        bbox_coords[0][0] - point_coords[0],
+                        bbox_coords[0][1] - point_coords[1]
+                        ]
+            elif point_coords[1] > bbox_coords[1][1]:
+                return [
+                        bbox_coords[0][0] - point_coords[0],
+                        bbox_coords[1][1] - point_coords[1]
+                        ]
+            else:
+                return [bbox_coords[0][0] - point_coords[0], 0]
+        elif point_coords[0] > bbox_coords[1][0]:
+            if point_coords[1] < bbox_coords[0][1]:
+                return [                        
+                        (bbox_coords[1][0] - point_coords[0]),
+                        (bbox_coords[0][1] - point_coords[1])
+                        ]
+            elif point_coords[1] > bbox_coords[1][1]:
+                return [
+                        (bbox_coords[1][0] - point_coords[0]),
+                        (bbox_coords[1][1] - point_coords[1])
+                        ]
+            else:
+                return [point_coords[0] - bbox_coords[1][0], 0]
+        elif point_coords[1] > bbox_coords[1][1]:
+            return [0, point_coords[1] - bbox_coords[1][1]]
+        else:
+            return [0, bbox_coords[0][1] - point_coords[1]]
+
+    def get_spherical_point_distance(self, point: Point):
+        if self.is_point_inside(point):
+            return 0
+
+        point_coords = np.array(point.get_raw_coords()) * np.pi / 180
+        angular_dist = np.array(self.get_angular_point_distance(point)) * np.pi / 180
+        bbox_coords = point_coords + angular_dist
+        dist = np.arccos(
+                np.sin(point_coords[1]) * np.sin(bbox_coords[1]) + 
+                np.cos(point_coords[1]) * np.cos(bbox_coords[1]) * np.cos(angular_dist[0])
+                         )
+
+        return dist
 
 class RotatedBoundingBox(BoundingBox):
     def __init__(self, date, lon_min: float, lat_min: float, lon_max: float, lat_max: float, units: str="deg"):
