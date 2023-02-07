@@ -9,6 +9,7 @@ from os import walk
 from os.path import join
 from astropy.time import Time
 from tqdm import tqdm
+from bisect import bisect_left
 import numpy as np
 import pandas as pd
 import astropy.units as u
@@ -59,15 +60,13 @@ def findSpatialCoOcurrentHarps():
 
             harps_timestamps = harps_data["Timestamp"].to_numpy()
 
-            CME_CLOSEST_HARPS_TIME = get_closest_harps_timestamp(harps_timestamps, cme.LINEAR_TIME_AT_SUN_CENTER)
+            CME_CLOSEST_HARPS_TIME = get_closest_harps_timestamp(harps_timestamps, cme.DATE)
 
-            harps_data_mask = (harps_timestamps == CME_CLOSEST_HARPS_TIME)
+            index = bisect_left(harps_timestamps, CME_CLOSEST_HARPS_TIME)
 
-            LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = harps_data[harps_data_mask][
-                    ["LON_MIN","LAT_MIN","LON_MAX","LAT_MAX"]
-                    ].to_numpy()[0]
+            LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = harps_data.iloc[index][["LON_MIN","LAT_MIN","LON_MAX","LAT_MAX"]].to_numpy()
 
-            HARPS_T_REC = harps_data[harps_data_mask]["Timestamp"].to_numpy()[0]
+            HARPS_T_REC = harps_data.iloc[index][["Timestamp"]].to_numpy()[0]
 
 
             harps = Harps(
