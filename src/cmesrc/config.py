@@ -14,6 +14,9 @@ MVTS_DATA_DIR = os.path.join(RAW_DATA_DIR, "mvts/")
 SWAN_DATA_DIR = os.path.join(MVTS_DATA_DIR, "SWAN/")
 PARTITIONS_DATA_DIR = os.path.join(MVTS_DATA_DIR, "partitions/")
 DIMMINGS_DATA_DIR = os.path.join(RAW_DATA_DIR, "dimmings/")
+REPORTS_DIR = os.path.join(ROOT, "reports/")
+FIGURES_DIR = os.path.join(REPORTS_DIR, "figures/")
+OVERVIEW_FIGURES_DIR = os.path.join(FIGURES_DIR, "overviews/")
 
 # Raw data files
 
@@ -32,3 +35,5 @@ TEMPORAL_MATCHING_DIMMINGS_DATABASE = os.path.join(INTERIM_DATA_DIR, "temporal_m
 TEMPORAL_MATCHING_DIMMINGS_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "temporal_matching_dimmings_database.pkl")
 HARPS_MATCHING_DIMMINGS_DATABASE = os.path.join(INTERIM_DATA_DIR, "harps_matching_dimmings_database.csv")
 HARPS_MATCHING_DIMMINGS_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "harps_matching_dimmings_database.pkl")
+PLOTTING_DATABASE = os.path.join(INTERIM_DATA_DIR, "plotting_database.csv")
+PLOTTING_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "plotting_database.pkl")

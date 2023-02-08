@@ -61,7 +61,7 @@ test_environment:
 #################################################################################
 
 .PHONY: all
-all: ./data/interim/temporal_matching_dimmings_database.csv
+all: ./data/interim/harps_matching_dimmings_database.csv
 
 ## Create HARPS lifetime database
 ./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py
@@ -71,13 +71,16 @@ all: ./data/interim/temporal_matching_dimmings_database.csv
 ./data/interim/lasco_cme_database.csv: ./src/scripts/pre-processing/parse_lasco_cme_catalogue.py ./data/raw/lasco/univ_all.txt
 	python3 $<
 
-./data/interim/temporal_matching_harps_database.csv: ./src/scripts/spatiotemporal_matching/temporal_matching.py ./data/interim/lasco_cme_database.csv ./data/interim/harps_lifetime_database.csv
+./data/interim/temporal_matching_harps_database.csv: ./src/scripts/spatiotemporal_matching/temporal_matching.py ./data/interim/lasco_cme_database.csv ./data/interim/harps_lifetime_database.csv ./src/cmesrc/classes.py ./src/harps/harps.py ./src/cmes/cmes.py
 	python3 $<
 
 ./data/interim/spatiotemporal_matching_harps_database.csv: ./src/scripts/spatiotemporal_matching/spatial_matching.py ./data/interim/temporal_matching_harps_database.csv
 	python3 $<
 
-./data/interim/temporal_matching_dimmings_database.csv: ./src/scripts/dimmings/find_temporal_matching_dimmings.py ./data/interim/spatiotemporal_matching_harps_database.csv
+./data/interim/temporal_matching_dimmings_database.csv: ./src/scripts/dimmings/find_temporal_matching_dimmings.py ./data/interim/spatiotemporal_matching_harps_database.csv ./src/dimmings/dimmings.py
+	python3 $<
+
+./data/interim/harps_matching_dimmings_database.csv: ./src/scripts/dimmings/find_harps_matching_dimming.py ./data/interim/temporal_matching_dimmings_database.csv
 	python3 $<
 
 #################################################################################
