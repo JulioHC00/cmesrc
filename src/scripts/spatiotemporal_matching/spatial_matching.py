@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import astropy.units as u
 
-MAX_TIME_DIFF = 24 * u.min
+MAX_TIME_DIFF = 0 * u.min
 
 rows = []
 
@@ -78,11 +78,7 @@ def findSpatialCoOcurrentHarps():
                     HARPNUM = harpnum
                           )
 
-            try:
-                is_harps_within_boundary, is_harps_rotated, harps_rotated_by, out_harps = cme.hasHarpsSpatialCoOcurrence(harps, max_time_diff=MAX_TIME_DIFF)
-            except MissmatchInTimes as e:
-                print(e.message)
-                continue
+            is_harps_within_boundary, is_harps_rotated, harps_rotated_by, out_harps = cme.hasHarpsSpatialCoOcurrence(harps, max_time_diff=MAX_TIME_DIFF)
 
             if is_harps_within_boundary:
                 new_row = cme_data.drop(["matching_harps", "n_matching_harps"]).to_dict()
