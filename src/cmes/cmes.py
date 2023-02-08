@@ -66,9 +66,7 @@ class CME:
         rotated_by = 0
 
         # Use approximate time at sun centre, if not available use original CME date
-        CME_DATE = self.LINEAR_TIME_AT_SUN_CENTER
-        if CME_DATE is None:
-            CME_DATE = self.DATE
+        CME_DATE = self.DATE
 
         # Check times
         if np.abs(harps.DATE - CME_DATE) > max_time_diff:
@@ -89,7 +87,8 @@ class CME:
         if harps_angle_dist_to_PA > 180:
             harps_angle_dist_to_PA = 360 - harps_angle_dist_to_PA
 
-        # Must be within the width plus 10 deg.
-        if harps_angle_dist_to_PA < (self.WIDTH / 2 + 10):
+        # Must be within the width plus extra definte deg.
+        if harps_angle_dist_to_PA < ((self.WIDTH + self.WIDTH_EXTRA_ANGLE) / 2):
             return True, rotated, rotated_by, final_harps
-        return False, rotated, rotated_by, final_harps
+        else:
+            return False, rotated, rotated_by, final_harps
