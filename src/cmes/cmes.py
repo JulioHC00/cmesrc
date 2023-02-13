@@ -60,6 +60,17 @@ class CME:
             return self.DATE - (1.5 * u.Rsun / self.LINEAR_SPEED).decompose()
             
 
+    def get_bbox_pa_diff(self, bbox):
+        if self.HALO:
+            return np.nan
+
+        angle_dist_to_PA = np.abs(bbox.get_position_angle() - self.PA)
+
+        # If the angle distance is larger than 180, then take the other side (360 - >180) is the smaller angle.
+        if angle_dist_to_PA > 180:
+            angle_dist_to_PA = 360 - angle_dist_to_PA
+
+        return angle_dist_to_PA
 
     def hasHarpsSpatialCoOcurrence(self, harps: Harps, max_time_diff = 12 * u.min) -> tuple:
         rotated = False
@@ -81,11 +92,7 @@ class CME:
                 return True, rotated, rotated_by, final_harps
             return False, rotated, rotated_by, final_harps
 
-        harps_angle_dist_to_PA = np.abs(harps.get_position_angle() - self.PA)
-
-        # If the angle distance is larger than 180, then take the other side (360 - >180) is the smaller angle.
-        if harps_angle_dist_to_PA > 180:
-            harps_angle_dist_to_PA = 360 - harps_angle_dist_to_PA
+        harps_angle_dist_to_PA = self.get_bbox_pa_diff(final_harps)
 
         # Must be within the width plus extra definte deg.
         if harps_angle_dist_to_PA < ((self.WIDTH + self.WIDTH_EXTRA_ANGLE) / 2):
