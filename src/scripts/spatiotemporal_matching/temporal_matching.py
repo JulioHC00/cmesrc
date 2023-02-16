@@ -46,7 +46,7 @@ def findAllMatchingRegions():
         for harpnum in matching_harps_list:
             new_row = row.to_dict()
             new_row["HARPNUM"] = harpnum
-            new_row["CME_HARPNUM_ID"] = int(str(f"{new_row['CME_ID']}{harpnum}"))
+            new_row["CME_HARPNUM_ID"] = f"{new_row['CME_ID']}{harpnum}"
             full_list_of_matches.append(new_row)
 
     temporal_matching_harps_database = pd.DataFrame.from_records(full_list_of_matches)
