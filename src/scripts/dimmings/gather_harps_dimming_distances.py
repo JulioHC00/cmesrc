@@ -38,7 +38,7 @@ on_disk_mask = raw_dimmings_catalogue["avg_r"] < 1
 on_disk_dimmings = raw_dimmings_catalogue[on_disk_mask]
 
 temporal_dimmings_matches = pd.read_pickle(TEMPORAL_MATCHING_DIMMINGS_DATABASE_PICKLE)
-temporal_dimmings_matches.set_index("CME_HARPNUM_ID", inplace=True, drop=False)
+temporal_dimmings_matches.set_index("CME_HARPNUM_DIMMING_ID", inplace=True, drop=False)
 
 final_df = temporal_dimmings_matches.copy()
 
@@ -73,23 +73,22 @@ for idx, data in tqdm(temporal_dimmings_matches.iterrows(), total=temporal_dimmi
 
     dimming = dimmings[matching_dimming_id]
 
-    dimming.point = dimming.point.rotate_coords(harps.DATE)
+    rotated_dimming_point = dimming.point.rotate_coords(harps.DATE)
 
-    harps_dimming_dist = harps.get_spherical_point_distance(dimming.point)
+    harps_dimming_dist = harps.get_spherical_point_distance(rotated_dimming_point)
 
-    final_df.at[idx, f"CME_HARPNUM_DIMMING_ID"] = int(f"{idx}{matching_dimming_id}")
     final_df.at[idx, f"DIMMING_TIME"] = dimming.point.DATE
     final_df.at[idx, f"DIMMING_CME_TIME_DIFF"] = np.abs(data["CME_DATE"] - dimming.point.DATE)
-    final_df.at[idx, f"DIMMING_CME_PA_DIFF"] = np.abs(data["CME_PA"] - dimming.point.get_position_angle())
+    final_df.at[idx, f"DIMMING_CME_PA_DIFF"] = np.abs(data["CME_PA"] - rotated_dimming_point.get_position_angle())
     final_df.at[idx, f"DIMMING_HARPS_DIST"] = harps_dimming_dist
-    final_df.at[idx, f"DIMMING_HARPS_PA_DIFF"] = np.abs(data["HARPS_PA"] - dimming.point.get_position_angle())
-    final_df.at[idx, f"DIMMING_HARP_R_DIFF"] = np.abs(harps.get_distance_to_sun_centre() - dimming.point.get_distance_to_sun_centre())
-    final_df.at[idx, f"DIMMING_R"] = dimming.point.get_distance_to_sun_centre()
-    final_df.at[idx, f"DIMMING_X"] = dimming.point.get_cartesian_coords()[0]
-    final_df.at[idx, f"DIMMING_Y"] = dimming.point.get_cartesian_coords()[1]
-    final_df.at[idx, f"DIMMING_LON"] = dimming.point.LON
-    final_df.at[idx, f"DIMMING_LAT"] = dimming.point.LAT
-    final_df.at[idx, f"DIMMING_PA"] = dimming.point.get_position_angle()
+    final_df.at[idx, f"DIMMING_HARPS_PA_DIFF"] = np.abs(data["HARPS_PA"] - rotated_dimming_point.get_position_angle())
+    final_df.at[idx, f"DIMMING_HARP_R_DIFF"] = np.abs(harps.get_distance_to_sun_centre() - rotated_dimming_point.get_distance_to_sun_centre())
+    final_df.at[idx, f"DIMMING_R"] = rotated_dimming_point.get_distance_to_sun_centre()
+    final_df.at[idx, f"DIMMING_X"] = rotated_dimming_point.get_cartesian_coords()[0]
+    final_df.at[idx, f"DIMMING_Y"] = rotated_dimming_point.get_cartesian_coords()[1]
+    final_df.at[idx, f"DIMMING_LON"] = rotated_dimming_point.LON
+    final_df.at[idx, f"DIMMING_LAT"] = rotated_dimming_point.LAT
+    final_df.at[idx, f"DIMMING_PA"] = rotated_dimming_point.get_position_angle()
 
 final_df.to_csv(HARPS_MATCHING_DIMMINGS_DATABASE, index=False)
 final_df.to_pickle(HARPS_MATCHING_DIMMINGS_DATABASE_PICKLE)

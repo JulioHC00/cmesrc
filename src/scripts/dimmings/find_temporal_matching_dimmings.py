@@ -42,6 +42,7 @@ def find_temporal_matching_dimmings():
             for i, dimming_id in enumerate(matching_dimmings):
                 new_row = spatiotemporal_matching_harps_database.loc[id].copy()
                 new_row.at["DIMMING_ID"] = dimming_id
+                new_row.at["CME_HARPNUM_DIMMING_ID"] = id + str(dimming_id)
                 matching_dimming_rows.append(new_row)
 
     matching_dimmings_df = pd.DataFrame.from_records(matching_dimming_rows)
