@@ -103,7 +103,7 @@ def parse_lasco_cme_catalogue():
 
         # Now we build the dictionary which is the row that is added to the DataFrame
         newRow = {
-                "CME_ID": f"{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}",
+                "CME_ID": f"ID{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}",
                 "CME_DATE": f"{processed_columns[0].replace('/','-')} {processed_columns[1]}", # ISO
                 "CME_PA": processed_columns[2],
                 "CME_WIDTH": processed_columns[3],
