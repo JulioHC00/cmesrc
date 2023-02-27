@@ -78,12 +78,11 @@ def findSpatialCoOcurrentHarps():
     final_database.to_csv(ALL_MATCHING_HARPS_DATABASE, index=False)
     final_database.to_pickle(ALL_MATCHING_HARPS_DATABASE_PICKLE)
 
-    only_match_database = final_database[final_database["HARPS_SPAT_CONSIST"]]
-    only_match_database.to_csv(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, index=False)
-    only_match_database.to_pickle(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
+    final_database.to_csv(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, index=False)
+    final_database.to_pickle(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
 
-    only_match_database.to_csv(MAIN_DATABASE, index=False)
-    only_match_database.to_pickle(MAIN_DATABASE_PICKLE)
+    final_database.to_csv(MAIN_DATABASE, index=False)
+    final_database.to_pickle(MAIN_DATABASE_PICKLE)
 
 
 if __name__ == "__main__":
