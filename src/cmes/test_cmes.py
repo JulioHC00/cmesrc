@@ -114,7 +114,7 @@ def test_rotation_harps_NO_co_ocurrence():
 
     has_harps, rotated, rotated_by, final_harps = cme.hasHarpsSpatialCoOcurrence(harps)
 
-    assert np.all([has_harps, rotated])
+    assert np.all([not has_harps, rotated])
 
 def test_rotated_by_harps_co_ocurrence():
     HARPS_DATE = "2000-12-23 12:13:00"

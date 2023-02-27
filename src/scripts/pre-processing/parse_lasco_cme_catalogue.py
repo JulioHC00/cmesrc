@@ -20,22 +20,22 @@ def parse_lasco_cme_catalogue():
     data = [line[:101] for line in lines]
 
     # Pandas dataframe to hold the data
-    finalDataFrame = pd.DataFrame(columns=["id",
-                                           "date",
-                                           "pa",
-                                           "width",
-                                           "linear_speed",
-                                           "2nd_order_initial_speed",
-                                           "2nd_order_final_speed",
-                                           "2nd_order_20R_speed",
-                                           "acceleration",
-                                           "mass",
-                                           "kinetic_energy",
-                                           "MPA",
-                                           "halo",
-                                           "seen_in",
-                                           "quality",
-                                           "three_points"]
+    finalDataFrame = pd.DataFrame(columns=["CME_ID",
+                                           "CME_DATE",
+                                           "CME_PA",
+                                           "CME_WIDTH",
+                                           "CME_LINEAR_SPEED",
+                                           "CME_2ND_ORDER_INITIAL_SPEED",
+                                           "CME_2ND_ORDER_FINAL_SPEED",
+                                           "CME_2ND_ORDER_20R_SPEED",
+                                           "CME_ACCELERATION",
+                                           "CME_MASS",
+                                           "CME_KINETIC_ENERGY",
+                                           "CME_MPA",
+                                           "CME_HALO",
+                                           "CME_SEEN_IN",
+                                           "CME_QUALITY",
+                                           "CME_THREE_POINTS"]
                                   )
 
     # Parse the data first
@@ -103,22 +103,22 @@ def parse_lasco_cme_catalogue():
 
         # Now we build the dictionary which is the row that is added to the DataFrame
         newRow = {
-                "id": f"{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}",
-                "date": f"{processed_columns[0].replace('/','-')} {processed_columns[1]}", # ISO
-                "pa": processed_columns[2],
-                "width": processed_columns[3],
-                "linear_speed": processed_columns[4],
-                "2nd_order_initial_speed": processed_columns[5],
-                "2nd_order_final_speed": processed_columns[6],
-                "2nd_order_20R_speed": processed_columns[7],
-                "acceleration": processed_columns[8],
-                "mass": processed_columns[9],
-                "kinetic_energy": processed_columns[10],
-                "MPA": processed_columns[11],
-                "halo": halo,
-                "seen_in": seen_in,
-                "quality": quality,
-                "three_points": three_points
+                "CME_ID": f"ID{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}",
+                "CME_DATE": f"{processed_columns[0].replace('/','-')} {processed_columns[1]}", # ISO
+                "CME_PA": processed_columns[2],
+                "CME_WIDTH": processed_columns[3],
+                "CME_LINEAR_SPEED": processed_columns[4],
+                "CME_2ND_ORDER_INITIAL_SPEED": processed_columns[5],
+                "CME_2ND_ORDER_FINAL_SPEED": processed_columns[6],
+                "CME_2ND_ORDER_20R_SPEED": processed_columns[7],
+                "CME_ACCELERATION": processed_columns[8],
+                "CME_MASS": processed_columns[9],
+                "CME_KINETIC_ENERGY": processed_columns[10],
+                "CME_MPA": processed_columns[11],
+                "CME_HALO": halo,
+                "CME_SEEN_IN": seen_in,
+                "CME_QUALITY": quality,
+                "CME_THREE_POINTS": three_points
                 }
 
         rows.append(newRow)

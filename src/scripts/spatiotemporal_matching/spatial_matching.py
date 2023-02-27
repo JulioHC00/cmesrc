@@ -1,16 +1,13 @@
 """
 Match temporally co-occurent HARPS regions to CMEs
 """
-from src.cmesrc.config import SWAN_DATA_DIR, TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE
-from src.cmesrc.utils import parse_pandas_str_list, get_closest_harps_timestamp
-from src.cmes.cmes import CME, MissmatchInTimes
+from src.cmesrc.config import SWAN_DATA_DIR, TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, ALL_MATCHING_HARPS_DATABASE, ALL_MATCHING_HARPS_DATABASE_PICKLE, MAIN_DATABASE, MAIN_DATABASE_PICKLE
+from src.cmesrc.utils import get_closest_harps_timestamp, cache_swan_data
+from src.cmes.cmes import CME
 from src.harps.harps import Harps
-from os import walk
-from os.path import join
-from astropy.time import Time
-from tqdm import tqdm
 from bisect import bisect_left
 import numpy as np
+from tqdm import tqdm
 import pandas as pd
 import astropy.units as u
 
@@ -18,92 +15,75 @@ MAX_TIME_DIFF = 0 * u.min
 
 rows = []
 
-def cacheSwanData() -> dict:
-    print("\n==CACHING SWAN DATA.==\n")
-    data_dict = dict()
-
-    for directoryName, subdirectoryName, fileList in walk(SWAN_DATA_DIR):
-        for fileName in tqdm(fileList):
-            harpnum = int(fileName.split('.')[0])
-
-            df = pd.read_csv(join(directoryName, fileName), sep="\t", na_values="None", usecols=['Timestamp', 'LAT_MIN', 'LON_MIN', 'LAT_MAX', 'LON_MAX']).dropna()
-
-            timestamps = list(df["Timestamp"].to_numpy())
-
-            df['Timestamp'] = Time(timestamps, format="iso")
-
-            data_dict[harpnum] = df
-
-    return data_dict
-
 def findSpatialCoOcurrentHarps():
     TEMPORAL_MATCHING_HARPS_DF = pd.read_pickle(TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
 
-    SWAN_DATA = cacheSwanData()
+    SWAN_DATA = cache_swan_data()
 
     final_database_rows = []
 
     print("\n==Finding Spatially Matching Harps.==\n")
     for idx, cme_data in tqdm(TEMPORAL_MATCHING_HARPS_DF.iterrows(), total=TEMPORAL_MATCHING_HARPS_DF.shape[0]):
-        CME_DETECTION_DATE = cme_data["date"]
-        CME_PA = cme_data["pa"]
-        CME_WIDTH = cme_data["width"]
-        CME_LINEAR_SPEED = cme_data["linear_speed"]
-        CME_IS_HALO = bool(cme_data["halo"])
-        CME_SEEN_ONLY_IN = int(cme_data["seen_in"])
+        CME_DETECTION_DATE = cme_data["CME_DATE"]
+        CME_PA = cme_data["CME_PA"]
+        CME_WIDTH = cme_data["CME_WIDTH"]
+        CME_IS_HALO = bool(cme_data["CME_HALO"])
+        CME_SEEN_ONLY_IN = int(cme_data["CME_SEEN_IN"])
+        HARPNUM = cme_data["HARPNUM"]
 
-        cme = CME(CME_DETECTION_DATE, CME_PA, CME_WIDTH, CME_LINEAR_SPEED, halo=CME_IS_HALO, seen_only_in = CME_SEEN_ONLY_IN)
+        cme = CME(CME_DETECTION_DATE, CME_PA, CME_WIDTH, halo=CME_IS_HALO, seen_only_in = CME_SEEN_ONLY_IN)
 
+        harps_data = SWAN_DATA[HARPNUM]
 
-        for harpnum in cme_data["matching_harps"]:
-            harps_data = SWAN_DATA[harpnum]
+        harps_timestamps = harps_data["Timestamp"].to_numpy()
 
-            harps_timestamps = harps_data["Timestamp"].to_numpy()
+        CME_CLOSEST_HARPS_TIME = get_closest_harps_timestamp(harps_timestamps, cme.DATE)
 
-            CME_CLOSEST_HARPS_TIME = get_closest_harps_timestamp(harps_timestamps, cme.DATE)
+        LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = harps_data.loc[CME_CLOSEST_HARPS_TIME, ["LON_MIN","LAT_MIN","LON_MAX","LAT_MAX"]].to_numpy()
 
-            index = bisect_left(harps_timestamps, CME_CLOSEST_HARPS_TIME)
+        harps = Harps(
+                date = CME_CLOSEST_HARPS_TIME,
+                lon_min = LON_MIN,
+                lat_min = LAT_MIN,
+                lon_max = LON_MAX,
+                lat_max = LAT_MAX,
+                HARPNUM = HARPNUM
+                      )
 
-            LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = harps_data.iloc[index][["LON_MIN","LAT_MIN","LON_MAX","LAT_MAX"]].to_numpy()
+        is_harps_within_boundary, is_harps_rotated, harps_rotated_by, out_harps = cme.hasHarpsSpatialCoOcurrence(harps, max_time_diff=0 * u.min) # Max diff 0 because I want the positions at the same time
 
-            HARPS_T_REC = harps_data.iloc[index][["Timestamp"]].to_numpy()[0]
+        if out_harps.DATE != cme.DATE:
+            raise ValueError("Harps time and CME time don't match")
 
+        new_row = cme_data.to_dict()
+        new_row["HARPS_SPAT_CONSIST"] = is_harps_within_boundary
+        new_row["HARPS_DATE"] = out_harps.DATE.to_string()
+        new_row["HARPS_MIDPOINT"] = out_harps.get_centre_point().get_raw_coords()
+        new_row["HARPS_DISTANCE_TO_SUN_CENTRE"] = out_harps.get_distance_to_sun_centre()
+        new_row["HARPS_PA"] = out_harps.get_position_angle()
+        new_row["CME_HARPS_PA_DIFF"] = cme.get_bbox_pa_diff(out_harps)
+        new_row["HARPS_RAW_BBOX"] = out_harps.get_raw_bbox()
+        new_row["HARPS_LON_MIN"] = out_harps.get_raw_bbox()[0][0]
+        new_row["HARPS_LAT_MIN"] = out_harps.get_raw_bbox()[0][1]
+        new_row["HARPS_LON_MAX"] = out_harps.get_raw_bbox()[1][0]
+        new_row["HARPS_LAT_MAX"] = out_harps.get_raw_bbox()[1][1]
+#        new_row.at["harps_rotated"] = int(is_harps_rotated)
+#        new_row.at["harps_rotated_by"] = harps_rotated_by
+#        new_row.at["cme_time_at_sun_centre"] = cme.calculateApproximateLinearTimeAtSunCentre()
 
-            harps = Harps(
-                    date = HARPS_T_REC,
-                    lon_min = LON_MIN,
-                    lat_min = LAT_MIN,
-                    lon_max = LON_MAX,
-                    lat_max = LAT_MAX,
-                    HARPNUM = harpnum
-                          )
-
-            is_harps_within_boundary, is_harps_rotated, harps_rotated_by, out_harps = cme.hasHarpsSpatialCoOcurrence(harps, max_time_diff=MAX_TIME_DIFF)
-
-            if is_harps_within_boundary:
-                new_row = cme_data.drop(["matching_harps", "n_matching_harps"]).to_dict()
-                new_row["cme_id"] = f"{new_row['id']}"
-                new_row["cme_harps_id"] = f"{new_row['id']}.{out_harps.HARPNUM}"
-                new_row["harpnum"] = out_harps.HARPNUM
-                new_row["harps_T_REC"] = out_harps.DATE
-                new_row["harps_raw_bbox"] = out_harps.get_raw_bbox()
-                new_row["harps_LON_MIN"] = out_harps.get_raw_bbox()[0][0]
-                new_row["harps_LAT_MIN"] = out_harps.get_raw_bbox()[0][1]
-                new_row["harps_LON_MAX"] = out_harps.get_raw_bbox()[1][0]
-                new_row["harps_LAT_MAX"] = out_harps.get_raw_bbox()[1][1]
-                new_row["date"] = cme.DATE
-                new_row["harps_pa"] = out_harps.get_position_angle()
-                new_row["harps_midpoint"] = out_harps.get_centre_point().get_raw_coords()
-                new_row["harps_distance_to_sun_centre"] = out_harps.get_distance_to_sun_centre()
-                new_row["harps_rotated"] = int(is_harps_rotated)
-                new_row["harps_rotated_by"] = harps_rotated_by
-                new_row["cme_time_at_sun_centre"] = cme.calculateApproximateLinearTimeAtSunCentre()
-
-                final_database_rows.append(new_row)
+        final_database_rows.append(new_row)
 
     final_database = pd.DataFrame.from_records(final_database_rows)
+
+    final_database.to_csv(ALL_MATCHING_HARPS_DATABASE, index=False)
+    final_database.to_pickle(ALL_MATCHING_HARPS_DATABASE_PICKLE)
+
     final_database.to_csv(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, index=False)
     final_database.to_pickle(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
+
+    final_database.to_csv(MAIN_DATABASE, index=False)
+    final_database.to_pickle(MAIN_DATABASE_PICKLE)
+
 
 if __name__ == "__main__":
     findSpatialCoOcurrentHarps()
