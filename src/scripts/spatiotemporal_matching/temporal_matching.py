@@ -7,6 +7,7 @@ from src.cmesrc.config import LASCO_CME_DATABASE, HARPS_LIFETIME_DATABSE, TEMPOR
 import numpy as np
 from tqdm import tqdm
 from astropy.time import Time
+from bisect import bisect_right
 import pandas as pd
 
 lasco_cme_database = pd.read_csv(LASCO_CME_DATABASE)
@@ -17,6 +18,8 @@ harps_lifetime_end_times = np.array([Time(harps_time) for harps_time in harps_li
 lasco_cme_database["CME_DATE"] = np.array([Time(cme_time) for cme_time in lasco_cme_database["CME_DATE"]]) # Parse dates
 cme_detection_times = lasco_cme_database["CME_DATE"].to_numpy()
 
+harpsnums = harps_lifetime_database["harpsnum"].to_numpy()
+
 FIRST_AVAILABLE_HARPS = min(harps_lifetime_start_times)
  
 CME_TIME_MASK = cme_detection_times > FIRST_AVAILABLE_HARPS
@@ -24,32 +27,42 @@ CME_QUALITY_MASK = (lasco_cme_database["CME_QUALITY"] == 0) & (lasco_cme_databas
 CME_FULL_MASK = CME_TIME_MASK & CME_QUALITY_MASK
 
 masked_lasco_cme_database = lasco_cme_database[CME_FULL_MASK]
-
-def findMatchingHarpsRegions(cme_detection_time: str) -> np.ndarray:
-
-    matching_harps_mask = (harps_lifetime_start_times <= cme_detection_time) & (harps_lifetime_end_times >= cme_detection_time)
-
-    matching_harps_list = harps_lifetime_database[matching_harps_mask]["harpsnum"].to_numpy()
-
-    return matching_harps_list
-
+masked_cme_times = np.array([Time(cme_time) for cme_time in masked_lasco_cme_database["CME_DATE"]])
 
 def findAllMatchingRegions():
     print("== Finding HARPS that match CMEs temporally ==")
+
+    sorted_start_indices = np.argsort(harps_lifetime_start_times)
+    sorted_end_indices = np.argsort(harps_lifetime_end_times)
+
+    harps_lifetime_start_times_sorted = harps_lifetime_start_times[sorted_start_indices]
+    harps_lifetime_end_times_sorted = harps_lifetime_end_times[sorted_end_indices]
+
     full_list_of_matches = []
+    new_data_rows = []
 
-    for i, row in tqdm(masked_lasco_cme_database.iterrows(), total=masked_lasco_cme_database.shape[0]):
-        cme_detection_time = row["CME_DATE"]
-        matching_harps_list = findMatchingHarpsRegions(cme_detection_time)
+    n = len(harpsnums)
+
+    for cme_time in tqdm(masked_cme_times):
+        start_index = bisect_right(harps_lifetime_start_times_sorted, cme_time)
+        end_index = bisect_right(harps_lifetime_end_times_sorted, cme_time)
+
+        start_indices = sorted_start_indices[:start_index]
+        end_indices = sorted_end_indices[end_index:]
+
+        harps = harpsnums[np.intersect1d(start_indices, end_indices)]
+
+        full_list_of_matches.append(list(harps))
 
 
-        for harpnum in matching_harps_list:
-            new_row = row.to_dict()
+    for i, harpnum_list in enumerate(full_list_of_matches):
+        for harpnum in harpnum_list:
+            new_row = masked_lasco_cme_database.iloc[i].to_dict()
             new_row["HARPNUM"] = harpnum
             new_row["CME_HARPNUM_ID"] = f"{new_row['CME_ID']}{harpnum}"
-            full_list_of_matches.append(new_row)
+            new_data_rows.append(new_row)
 
-    temporal_matching_harps_database = pd.DataFrame.from_records(full_list_of_matches)
+    temporal_matching_harps_database = pd.DataFrame.from_records(new_data_rows)
     columns = temporal_matching_harps_database.columns
     first_cols = ["CME_ID", "CME_HARPNUM_ID", "CME_DATE", "HARPNUM"]
     temporal_matching_harps_database = temporal_matching_harps_database[first_cols + [col for col in columns if col not in first_cols]]
