@@ -1,31 +1,28 @@
 """
 Match temporally co-occurent HARPS regions to CMEs
 """
-from src.cmesrc.config import SWAN_DATA_DIR, TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, ALL_MATCHING_HARPS_DATABASE, ALL_MATCHING_HARPS_DATABASE_PICKLE, MAIN_DATABASE, MAIN_DATABASE_PICKLE
+from src.cmesrc.config import TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, MAIN_DATABASE, MAIN_DATABASE_PICKLE
 from src.cmesrc.utils import get_closest_harps_timestamp, cache_swan_data
 from src.cmes.cmes import CME
 from src.harps.harps import Harps
-from bisect import bisect_left
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-import astropy.units as u
+import multiprocessing as mp
 
 EXTRA_CME_WIDTH = 10
 HALO_MAX_SUN_CENTRE_DIST = 0.5
 
 rows = []
 
-def findSpatialCoOcurrentHarps():
+def setup():
+    SWAN_DATA = cache_swan_data()
+
     temporal_matching_harps = pd.read_pickle(TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
     temporal_matching_harps.set_index("CME_HARPNUM_ID", inplace=True, drop=False)
     temporal_matching_harps = temporal_matching_harps.sort_values(by="HARPNUM")
     grouped_matching_harps = temporal_matching_harps.groupby("HARPNUM") 
     final_database = temporal_matching_harps.copy()
-
-    SWAN_DATA = cache_swan_data()
-
-    final_database_rows = []
     harps_indices = None
     ALL_LON_MIN = []
     ALL_LAT_MIN = []
@@ -62,9 +59,6 @@ def findSpatialCoOcurrentHarps():
     final_database.at[harps_indices, "HARPS_RAW_LAT_MAX"] = ALL_LAT_MAX
     final_database.at[harps_indices, "HARPS_RAW_DATE"] = ALL_RAW_HARPS_TIMES
 
-
-    cme_grouped_matching_harps = final_database.groupby("CME_ID")
-
     final_database["HARPS_DATE"] = None
     final_database["HARPS_MIDPOINT"] = None
     final_database["HARPS_DISTANCE_TO_SUN_CENTRE"] = None
@@ -76,7 +70,14 @@ def findSpatialCoOcurrentHarps():
     final_database["HARPS_LON_MAX"] = None
     final_database["HARPS_LAT_MAX"] = None
 
-    print("\n=Rotating Harps Positions=\n")
+    del SWAN_DATA
+    return final_database
+
+def findSpatialCoOcurrentHarps(cme_ids):
+
+    return_database = final_database[[ID in cme_ids for ID in final_database["CME_ID"]]]
+    cme_grouped_matching_harps = return_database.groupby("CME_ID")
+
     for cme_id, group in tqdm(cme_grouped_matching_harps):
         CME_DETECTION_DATE = group.iloc[0]["CME_DATE"]
         CME_PA = group.iloc[0]["CME_PA"]
@@ -104,19 +105,20 @@ def findSpatialCoOcurrentHarps():
                     HARPNUM = HARPNUM
                           ).rotate_bbox(CME_DETECTION_DATE)
 
-#            final_database.at[harps_data.index, "HARPS_SPAT_CONSIST"] = is_harps_within_boundary
-            final_database.at[idx, "HARPS_DATE"] = harps.DATE.to_string()
-            final_database.at[idx, "HARPS_MIDPOINT"] = harps.get_centre_point().get_raw_coords()
-            final_database.at[idx, "HARPS_DISTANCE_TO_SUN_CENTRE"] = harps.get_distance_to_sun_centre()
-            final_database.at[idx, "HARPS_PA"] = harps.get_position_angle()
-            final_database.at[idx, "CME_HARPS_PA_DIFF"] = cme.get_bbox_pa_diff(harps)
-            final_database.at[idx, "HARPS_RAW_BBOX"] = harps.get_raw_bbox()
-            final_database.at[idx, "HARPS_LON_MIN"] = harps.get_raw_bbox()[0][0]
-            final_database.at[idx, "HARPS_LAT_MIN"] = harps.get_raw_bbox()[0][1]
-            final_database.at[idx, "HARPS_LON_MAX"] = harps.get_raw_bbox()[1][0]
-            final_database.at[idx, "HARPS_LAT_MAX"] = harps.get_raw_bbox()[1][1]
+#            return_database.at[harps_data.index, "HARPS_SPAT_CONSIST"] = is_harps_within_boundary
+            return_database.at[idx, "HARPS_DATE"] = harps.DATE.to_string()
+            return_database.at[idx, "HARPS_MIDPOINT"] = harps.get_centre_point().get_raw_coords()
+            return_database.at[idx, "HARPS_DISTANCE_TO_SUN_CENTRE"] = harps.get_distance_to_sun_centre()
+            return_database.at[idx, "HARPS_PA"] = harps.get_position_angle()
+            return_database.at[idx, "CME_HARPS_PA_DIFF"] = cme.get_bbox_pa_diff(harps)
+            return_database.at[idx, "HARPS_RAW_BBOX"] = harps.get_raw_bbox()
+            return_database.at[idx, "HARPS_LON_MIN"] = harps.get_raw_bbox()[0][0]
+            return_database.at[idx, "HARPS_LAT_MIN"] = harps.get_raw_bbox()[0][1]
+            return_database.at[idx, "HARPS_LON_MAX"] = harps.get_raw_bbox()[1][0]
+            return_database.at[idx, "HARPS_LAT_MAX"] = harps.get_raw_bbox()[1][1]
+    return return_database
 
-
+def find_matches_and_save(final_database):
     non_halo = final_database[final_database["CME_HALO"] == 0]
     halo = final_database[final_database["CME_HALO"] == 1]
 
@@ -140,4 +142,18 @@ def findSpatialCoOcurrentHarps():
 
 
 if __name__ == "__main__":
-    findSpatialCoOcurrentHarps()
+    N = 4
+
+    final_database = setup()
+
+    final_database_copy = final_database.copy()
+
+    cme_ids_all = np.array(list(set(final_database["CME_ID"])))
+
+    cme_ids_list = np.array_split(cme_ids_all, N)
+
+    print("\n=Rotating Harps Positions=\n")
+    with mp.Pool(processes=N) as pool:
+        final_database_copy = pd.concat(list(tqdm(pool.imap(findSpatialCoOcurrentHarps, cme_ids_list))))
+
+    find_matches_and_save(final_database_copy)
