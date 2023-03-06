@@ -102,7 +102,7 @@ def findSpatialCoOcurrentHarps():
                     lon_max = LON_MAX,
                     lat_max = LAT_MAX,
                     HARPNUM = HARPNUM
-                          )
+                          ).rotate_bbox(CME_DETECTION_DATE)
 
 #            final_database.at[harps_data.index, "HARPS_SPAT_CONSIST"] = is_harps_within_boundary
             final_database.at[idx, "HARPS_DATE"] = harps.DATE.to_string()
