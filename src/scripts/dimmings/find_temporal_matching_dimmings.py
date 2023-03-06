@@ -27,6 +27,9 @@ def find_temporal_matching_dimmings():
 
     grouped_cmes = spatiotemporal_matching_harps_database.groupby(["CME_ID", "CME_DATE"])
 
+    dimming_ids = []
+    indices = []
+
     for cme_id_date, group in tqdm(grouped_cmes):
         cme_id, cme_date = cme_id_date
 
@@ -36,16 +39,17 @@ def find_temporal_matching_dimmings():
         low_idx = bisect_left(dimmings_start_times, minimum_time)
         high_idx = bisect_left(dimmings_start_times, maximum_time)
 
-        matching_dimmings = dimmings_ids[low_idx:high_idx]
+        matching_dimmings = np.array(dimmings_ids[low_idx:high_idx])
 
-        for id in group.index:
-            for i, dimming_id in enumerate(matching_dimmings):
-                new_row = spatiotemporal_matching_harps_database.loc[id].copy()
-                new_row.at["DIMMING_ID"] = dimming_id
-                new_row.at["CME_HARPNUM_DIMMING_ID"] = id + str(dimming_id)
-                matching_dimming_rows.append(new_row)
+        indices.extend(list(np.array([cme_id]).repeat(len(matching_dimmings))))
 
-    matching_dimmings_df = pd.DataFrame.from_records(matching_dimming_rows)
+        dimming_ids.extend(matching_dimmings)
+
+    dimmings_series = pd.Series(index=indices, data=dimming_ids).rename("DIMMING_ID")
+    matching_dimmings_df = spatiotemporal_matching_harps_database.copy()
+    matching_dimmings_df = pd.merge(matching_dimmings_df, dimmings_series, left_on="CME_ID", right_index=True)
+    matching_dimmings_df["CME_HARPNUM_DIMMING_ID"] = [f"{cme_harpnum_id}{dimming_id}" for cme_harpnum_id, dimming_id in zip(matching_dimmings_df["CME_HARPNUM_ID"], matching_dimmings_df["DIMMING_ID"])]
+
     matching_dimmings_df.to_csv(TEMPORAL_MATCHING_DIMMINGS_DATABASE, index=False)
     matching_dimmings_df.to_pickle(TEMPORAL_MATCHING_DIMMINGS_DATABASE_PICKLE)
 
