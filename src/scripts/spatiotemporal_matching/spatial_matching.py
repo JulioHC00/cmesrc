@@ -2,7 +2,7 @@
 Match temporally co-occurent HARPS regions to CMEs
 """
 from src.cmesrc.config import TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, MAIN_DATABASE, MAIN_DATABASE_PICKLE
-from src.cmesrc.utils import get_closest_harps_timestamp, cache_swan_data
+from src.cmesrc.utils import get_closest_harps_timestamp, cache_swan_data, clear_screen
 from src.cmes.cmes import CME
 from src.harps.harps import Harps
 import numpy as np
@@ -142,9 +142,12 @@ def find_matches_and_save(final_database):
 
 
 if __name__ == "__main__":
+    clear_screen()
     N = 4
 
     final_database = setup()
+
+    clear_screen()
 
     final_database_copy = final_database.copy()
 
@@ -152,8 +155,11 @@ if __name__ == "__main__":
 
     cme_ids_list = np.array_split(cme_ids_all, N)
 
+    print("\n===Finding Spatially Matching Harps.===\n")
     print("\n=Rotating Harps Positions=\n")
     with mp.Pool(processes=N) as pool:
         final_database_copy = pd.concat(list(tqdm(pool.imap(findSpatialCoOcurrentHarps, cme_ids_list))))
 
     find_matches_and_save(final_database_copy)
+
+    clear_screen()

@@ -1,4 +1,5 @@
 from src.cmesrc.config import SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, RAW_DIMMINGS_CATALOGUE, TEMPORAL_MATCHING_DIMMINGS_DATABASE, TEMPORAL_MATCHING_DIMMINGS_DATABASE_PICKLE
+from src.cmesrc.utils import clear_screen
 import pandas as pd
 from tqdm import tqdm
 import astropy.units as u
@@ -7,6 +8,8 @@ from bisect import bisect_left
 import numpy as np
 
 def find_temporal_matching_dimmings():
+    print("===DIMMINGS===")
+    print("==Finding temporal matching dimmings==")
     spatiotemporal_matching_harps_database = pd.read_pickle(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
     spatiotemporal_matching_harps_database.set_index("CME_HARPNUM_ID", drop=False, inplace=True)
     dimmings_catalogue = pd.read_csv(RAW_DIMMINGS_CATALOGUE)
@@ -54,4 +57,8 @@ def find_temporal_matching_dimmings():
     matching_dimmings_df.to_pickle(TEMPORAL_MATCHING_DIMMINGS_DATABASE_PICKLE)
 
 if __name__ == "__main__":
+    clear_screen()
+
     find_temporal_matching_dimmings()
+
+    clear_screen()

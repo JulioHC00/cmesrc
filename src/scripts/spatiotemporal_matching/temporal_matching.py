@@ -4,6 +4,7 @@ HERE THE LASCO CME DATABASE IS MASKED TO ONLY CMES WITHOUT POOR OR VERY POOR DES
 """
 
 from src.cmesrc.config import LASCO_CME_DATABASE, HARPS_LIFETIME_DATABSE, TEMPORAL_MATCHING_HARPS_DATABASE, TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE
+from src.cmesrc.utils import clear_screen
 import numpy as np
 from tqdm import tqdm
 from astropy.time import Time
@@ -74,4 +75,8 @@ def findAllMatchingRegions():
     temporal_matching_harps_database.to_pickle(TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
 
 if __name__ == "__main__":
+    clear_screen()
+
     findAllMatchingRegions()
+
+    clear_screen()

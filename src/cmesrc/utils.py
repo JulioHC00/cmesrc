@@ -3,10 +3,18 @@ from datetime import datetime, timedelta
 import astropy.units as u
 from bisect import bisect_left
 from tqdm import tqdm
-from os import walk
+from os import walk, system, name
 from os.path import join
 import pandas as pd
 from src.cmesrc.config import SWAN_DATA_DIR
+
+def clear_screen(): # for windows
+    if name == 'nt':
+        _ = system('cls')
+ 
+    # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = system('clear')
 
 def parse_date(date_str):
     if type(date_str) == Time:
@@ -26,6 +34,7 @@ def get_closest_harps_timestamp(harps_timestamps, cme_time) -> Time:
     return min(harps_timestamps[max(0, i-1): i+2], key=lambda t: abs(cme_time - t))
 
 def cache_swan_data() -> dict:
+    clear_screen()
     print("\n==CACHING SWAN DATA.==\n")
     data_dict = dict()
 
@@ -43,4 +52,6 @@ def cache_swan_data() -> dict:
 
             data_dict[harpnum] = df
 
+    clear_screen()
     return data_dict
+

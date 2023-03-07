@@ -1,4 +1,5 @@
 from src.cmesrc.config import SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, RAW_FLARE_CATALOGUE, TEMPORAL_MATCHING_FLARES_DATABASE, TEMPORAL_MATCHING_FLARES_DATABASE_PICKLE
+from src.cmesrc.utils import clear_screen
 import pandas as pd
 from tqdm import tqdm
 import astropy.units as u
@@ -7,6 +8,8 @@ from bisect import bisect_left
 import numpy as np
 
 def find_temporal_matching_flares():
+    print("===FLARES===")
+    print("==Finding temporal matching flares==")
     spatiotemporal_matching_harps_database = pd.read_pickle(SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
     spatiotemporal_matching_harps_database.set_index("CME_HARPNUM_ID", drop=False, inplace=True)
     flare_catalogue = pd.read_csv(RAW_FLARE_CATALOGUE)
@@ -51,4 +54,8 @@ def find_temporal_matching_flares():
     matching_flares_df.to_pickle(TEMPORAL_MATCHING_FLARES_DATABASE_PICKLE)
 
 if __name__ == "__main__":
+    clear_screen()
+
     find_temporal_matching_flares()
+
+    clear_screen()
