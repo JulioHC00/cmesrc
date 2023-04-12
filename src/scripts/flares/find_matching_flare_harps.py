@@ -8,6 +8,25 @@ DEG_TO_RAD = np.pi / 180
 HALF_POINTS_DIST = 10 * DEG_TO_RAD
 NO_POINTS_DIST = 15 * DEG_TO_RAD
 
+MIN_FLARE_CLASS = 25 #C5
+def flare_class_to_number(fclass):
+    class_letters = {
+            "A": 0,
+            "B": 10,
+            "C": 20,
+            "M": 30,
+            "X": 40,
+            }
+    letter = fclass[0]
+
+    points = class_letters[letter]
+
+    points += float(fclass[1:])
+
+    return points
+
+
+
 def score_flares():
     print("===FLARES===")
     print("==Scoring and matching flares==")
@@ -68,6 +87,8 @@ def score_flares():
         main_dataframe.loc[idx, "FLARE_MATCH"] = match["FLARE_ID"]
         main_dataframe.loc[idx, "FLARE_LON"] = match["FLARE_LON"]
         main_dataframe.loc[idx, "FLARE_LAT"] = match["FLARE_LAT"]
+        main_dataframe.loc[idx, "FLARE_CLASS"] = match["FLARE_CLASS"]
+        main_dataframe.loc[idx, "FLARE_CLASS_FLAG"] = flare_class_to_number(match["FLARE_CLASS"]) > MIN_FLARE_CLASS
         main_dataframe.loc[idx, "FLARE_FLAG"] = True
 
     main_dataframe["FLARE_FLAG"] = main_dataframe["FLARE_FLAG"].fillna(False)

@@ -22,7 +22,6 @@ def gather_flare_distances():
     harps_classification = []
     flares = dict()
 
-    ffs = []
     for idx, data in tqdm(temporal_flares_matches.iterrows(), total=temporal_flares_matches.shape[0]):
         matching_flare_id = data["FLARE_ID"]
 
@@ -72,6 +71,7 @@ def gather_flare_distances():
         final_df.at[idx, f"FLARE_LON"] = rotated_flare_point.LON
         final_df.at[idx, f"FLARE_LAT"] = rotated_flare_point.LAT
         final_df.at[idx, f"FLARE_PA"] = rotated_flare_point.get_position_angle()
+        final_df.at[idx, f"FLARE_CLASS"] = flare.XR_CLASS
 
     final_df.to_csv(HARPS_MATCHING_FLARES_DATABASE, index=False)
     final_df.to_pickle(HARPS_MATCHING_FLARES_DATABASE_PICKLE)
