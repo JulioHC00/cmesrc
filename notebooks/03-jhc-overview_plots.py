@@ -26,7 +26,7 @@ transparent_white = (1, 1, 1, 0.4)
 
 main_data = pd.read_pickle(MAIN_DATABASE_PICKLE)
 
-harps_data = pd.read_pickle(ALL_MATCHING_HARPS_DATABASE_PICKLE)
+harps_data = pd.read_pickle(MAIN_DATABASE_PICKLE)
 harps_data.set_index("CME_ID", drop=True, inplace=True)
 dimmings_data = pd.read_pickle(SCORED_HARPS_MATCHING_DIMMINGS_DATABASE_PICKLE)
 dimmings_data.set_index("CME_ID", drop=True, inplace=True)
@@ -36,13 +36,7 @@ flares_data.set_index("CME_ID", drop=True, inplace=True)
 
 grouped_main_data = main_data.groupby("CME_ID")
 
-cme_match_mask = dict()
-for index, group in grouped_main_data:
-    cme_match_mask[index] =  np.any(group["DIMMING_MATCH"]) & np.any(group["FLARE_MATCH"])
-
-harps_data["plot"] = list(map(lambda x: False if x not in cme_match_mask.keys() else cme_match_mask[x], harps_data.index))
-
-grouped_harps_data = harps_data[harps_data["plot"]].groupby("CME_ID")
+grouped_harps_data = harps_data.groupby("CME_ID")
 grouped_dimmings_data = dimmings_data.groupby("CME_ID")
 grouped_flares_data = flares_data.groupby("CME_ID")
 
@@ -124,6 +118,9 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
         flare_rows = grouped_flares_data.get_group(cme_id)
     else:
         flare_rows = []
+
+    if not ((len(dimming_rows) > 0) and (len(flare_rows) > 0)):
+        continue
 
     cme_time = harps_rows["CME_DATE"].to_list()[0]
     cme_pa = harps_rows["CME_PA"].to_list()[0]
@@ -235,6 +232,7 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
 
             flare_data = flare_data_rows.iloc[0]
             matched_flare = flare_data["MATCH"] == 1
+            flare_class = flare_data["FLARE_CLASS"]
 
             if matched_flare:
                 color = "#28C0D7"
@@ -251,7 +249,7 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
 
             ax.plot_coord(flare_skycoord, c=color, zorder=10, marker="*", markersize=10, markeredgecolor="k")
 
-            ax.annotate(f"F{flare_id}", 
+            ax.annotate(f"F{flare_id}-{flare_class}", 
                         (0, 0),
                         xytext=(flare.point.LON, flare.point.LAT + 5),
                         xycoords=ax.get_transform('heliographic_stonyhurst'),
@@ -269,6 +267,7 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
                 ax.plot_coord(line, c="k", linewidth=1, zorder=5)
 
     plt.savefig(OVERVIEW_FIGURES_DIR + str(cme_id) + ".png", dpi=100, facecolor="#555555")
+    plt.savefig(OVERVIEW_FIGURES_DIR + str(cme_id) + ".svg", bbox_inches="tight")
     plt.clf()
     plt.cla()
     plt.close()
