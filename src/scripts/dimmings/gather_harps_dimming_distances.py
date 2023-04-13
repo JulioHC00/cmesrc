@@ -18,22 +18,33 @@ def gather_dimming_distances():
     raw_dimmings_catalogue.set_index("dimming_id", inplace=True, drop=False)
     raw_dimmings_catalogue["max_detection_time"] = Time(raw_dimmings_catalogue["max_detection_time"].to_list(), format="iso")
 
-    for dimming_id, dimming_data in raw_dimmings_catalogue.iterrows():
-        if dimming_data["avg_r"] >= 1:
-            continue
-        if np.any(pd.isna(dimming_data[["longitude", "latitude"]])):
-            x = dimming_data["avg_x"]
-            y = dimming_data["avg_y"]
+    ##################################################################
+    # Dropping dimmings that are missing longitude or latitude for now
+    ##################################################################
 
-            lat = np.arcsin(y)
-            lon = np.arcsin(x / np.cos(np.arcsin(y)))
+    raw_dimmings_catalogue.dropna(subset=["longitude", "latitude"], inplace=True)
 
-            lat = lat * 180 / np.pi
-            lon = lon * 180 / np.pi
 
-            raw_dimmings_catalogue.at[dimming_id, "longitude"] = lon
-            raw_dimmings_catalogue.at[dimming_id, "latitude"] = lat
-        
+    #################################################################################################
+    # This is wrong, removing for now and ignoring all dimmings that don't have longitude or latitude
+    #################################################################################################
+
+    # for dimming_id, dimming_data in raw_dimmings_catalogue.iterrows():
+    #     if dimming_data["avg_r"] >= 1:
+    #         continue
+
+    #     if np.any(pd.isna(dimming_data[["longitude", "latitude"]])):
+    #         x = dimming_data["avg_x"]
+    #         y = dimming_data["avg_y"]
+
+    #         lat = np.arcsin(y)
+    #         lon = np.arcsin(x / np.cos(np.arcsin(y)))
+
+    #         lat = lat * 180 / np.pi
+    #         lon = lon * 180 / np.pi
+
+    #         raw_dimmings_catalogue.at[dimming_id, "longitude"] = lon
+    #         raw_dimmings_catalogue.at[dimming_id, "latitude"] = lat
 
     on_disk_mask = raw_dimmings_catalogue["avg_r"] < 1
     on_disk_dimmings = raw_dimmings_catalogue[on_disk_mask]
