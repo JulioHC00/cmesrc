@@ -91,3 +91,6 @@ target/
 # Jukit
 .jukit/
 */.jukit/
+
+# Figures overviews
+reports/figures/overview/
