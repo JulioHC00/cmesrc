@@ -72,7 +72,7 @@ def score_dimmings():
         # probably come from the same region so if we mismatch by a few hours it
         # should be fine
 
-        # TODO: This doesn't work with halo CMEs, need to solve it
+        # NOTE: This doesn't work with halo CMEs, need to solve it
 
         # Proposed approach, instead of using the PA difference, if a region appears twice,
         # keep only the one that has spatial consistency so in that case we ensure that
@@ -132,6 +132,17 @@ def score_dimmings():
 
     main_dataframe = pd.read_pickle(MAIN_DATABASE_PICKLE)
     main_dataframe.set_index("CME_HARPNUM_ID", drop=False, inplace=True)
+
+    # First, if the columns already exist, we need to reset them
+    if "DIMMING_MATCH" in main_dataframe.columns:
+        main_dataframe["DIMMING_MATCH"] = np.nan
+    if "DIMMING_LON" in main_dataframe.columns:
+        main_dataframe["DIMMING_LON"] = np.nan
+    if "DIMMING_LAT" in main_dataframe.columns:
+        main_dataframe["DIMMING_LAT"] = np.nan
+    if "DIMMING_FLAG" in main_dataframe.columns:
+        main_dataframe["DIMMING_FLAG"] = np.nan
+    
 
     for idx, match in scored_data[scored_data["MATCH"] == 1].set_index("CME_HARPNUM_ID", drop=False).iterrows():
         main_dataframe.loc[idx, "DIMMING_MATCH"] = match["DIMMING_ID"]
