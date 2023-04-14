@@ -17,7 +17,13 @@ def find_temporal_matching_flares():
 
     flare_catalogue["time_peak"] = Time(flare_catalogue["time_peak"].to_list())
 
-    MAX_TIME_BACK_FROM_CME_TIME =  3 * u.hour
+    # Need to make sure these are sorted
+
+    flare_catalogue.sort_values(by="time_peak", inplace=True)
+
+    # See my comments in the find_temporal_matching_dimmings.py script about the
+    # choice for this values
+    MAX_TIME_BACK_FROM_CME_TIME =  4 * u.hour
     MAX_TIME_FORWARD_FROM_CME_TIME =  0 * u.hour
 
     flares_start_times = flare_catalogue["time_peak"].to_numpy()
