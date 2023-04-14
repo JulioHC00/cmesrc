@@ -20,13 +20,46 @@ def find_temporal_matching_dimmings():
 
     dimmings_catalogue["start_time"] = Time(dimmings_catalogue["start_time"].to_list())
 
+    # Need to make sure these are sorted
+
+    dimmings_catalogue.sort_values(by="start_time", inplace=True)
+
     #######################################################################################
     # For now, need to remove all dimmings that don't have values for longitude or latitude
     #######################################################################################
 
     dimmings_catalogue.dropna(subset=["longitude", "latitude"], inplace=True)
 
-    MAX_TIME_BACK_FROM_CME_TIME =  3 * u.hour
+    # More strict, Vrsnak et al. 2007 "Acceleration Phase of Coronal Mass
+    # Ejections: I. Temporal and Spatial Scales" See an average speed of CMEs of
+    # ~600 km/s. From parsed LASCO CME catalogue, 90% of the CMEs with measured
+    # speeds have less than 700 km/s. So, supposing all CMEs are discovered in
+    # LASCO C2 first, that corresponds to about 8 minuted between being launched
+    # and it being seen in LASCO C2.  Of course, this is longer because there's
+    # some acceleration. Slower CMEs, with speeds of around 100 km/s, should
+    # take around 1 hour to be seen. So, with that in mind I think a window of
+    # about 2 hours is sufficient.
+    
+    # AFTERTHOUGHT: While that is true if all CMEs are detected in C2, consider
+    # one that is detected in C3, so that its detection time is after it
+    # appeared in C3, then the time should be longer. In that case we should
+    # allow for even longer thimes? So what if we just allow say 4 hours in
+    # total
+    
+    # TODO: Change the times depending on where the CME was seen
+    
+    # Since it should also be around 8 minutes between the CME being launched
+    # and it being seen in LASCO C2, I add a negative
+    # MAX_TIMe_FORWARD_FROM_CME_TIME to account for that.
+    
+    # NOTE: LASCO C2 and C3 FOV from
+    # https://www.sr.bham.ac.uk/solar/uls/lasco_.html
+    
+    # TODO: Possible improvement would be to use the speed of the CME to
+    # determine the window size.  Problem is not all CMEs have a measured speed
+    # so this wouldn't be applicable to all of them.
+
+    MAX_TIME_BACK_FROM_CME_TIME =  4 * u.hour
     MAX_TIME_FORWARD_FROM_CME_TIME =  0 * u.hour
 
     dimmings_start_times = dimmings_catalogue["start_time"].to_numpy()
