@@ -20,6 +20,12 @@ def find_temporal_matching_dimmings():
 
     dimmings_catalogue["start_time"] = Time(dimmings_catalogue["start_time"].to_list())
 
+    #######################################################################################
+    # For now, need to remove all dimmings that don't have values for longitude or latitude
+    #######################################################################################
+
+    dimmings_catalogue.dropna(subset=["longitude", "latitude"], inplace=True)
+
     MAX_TIME_BACK_FROM_CME_TIME =  3 * u.hour
     MAX_TIME_FORWARD_FROM_CME_TIME =  0 * u.hour
 
