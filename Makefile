@@ -67,7 +67,7 @@ test_environment:
 #################################################################################
 
 .PHONY: all
-all: ./data/interim/scored_harps_matching_dimmings_database.csv ./data/interim/scored_harps_matching_flares_database.csv
+all: ./data/interim/main_database.csv
 
 ## Create HARPS lifetime database
 ./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py
@@ -85,28 +85,16 @@ all: ./data/interim/scored_harps_matching_dimmings_database.csv ./data/interim/s
 ./data/interim/spatiotemporal_matching_harps_database.csv: ./src/scripts/spatiotemporal_matching/spatial_matching.py ./data/interim/temporal_matching_harps_database.csv
 	@python3 $<
 
-# Temporal matching dimmings
-./data/interim/temporal_matching_dimmings_database.csv: ./src/scripts/dimmings/find_temporal_matching_dimmings.py ./data/interim/spatiotemporal_matching_harps_database.csv ./src/dimmings/dimmings.py
+# Match dimmings
+./data/interim/dimmings_matched_to_harps.csv: ./src/scripts/dimmings/match_dimmings_to_harps.py ./data/interim/spatiotemporal_matching_harps_database.csv ./src/dimmings/dimmings.py ./data/raw/dimmings/dimmings.csv
 	@python3 $<
 
-# Calculate distances and other information related to dimmings
-./data/interim/harps_matching_dimmings_database.csv: ./src/scripts/dimmings/gather_harps_dimming_distances.py ./data/interim/temporal_matching_dimmings_database.csv
+# Match flares
+./data/interim/flares_matched_to_harps.csv: ./src/scripts/flares/match_flares_to_harps.py ./data/interim/spatiotemporal_matching_harps_database.csv ./src/flares/flares.py ./data/raw/flares/goes_sxr_flares.csv
 	@python3 $<
 
-# Score the likelihood of a dimming belonging to a HARPs region and assign them
-./data/interim/scored_harps_matching_dimmings_database.csv: ./src/scripts/dimmings/find_matching_dimming_harps.py ./data/interim/harps_matching_dimmings_database.csv
-	@python3 $<
-
-# Temporal matching flares
-./data/interim/temporal_matching_flares_database.csv: ./src/scripts/flares/find_temporal_matching_flares.py ./data/interim/spatiotemporal_matching_harps_database.csv ./src/flares/flares.py
-	@python3 $<
-
-# Calculate distances and other information related to flares
-./data/interim/harps_matching_flares_database.csv: ./src/scripts/flares/gather_harps_flares_distances.py ./data/interim/temporal_matching_flares_database.csv
-	@python3 $<
-
-# Score the likelihood of a flare belonging to a HARPs region and assign them
-./data/interim/scored_harps_matching_flares_database.csv: ./src/scripts/flares/find_matching_flare_harps.py ./data/interim/harps_matching_flares_database.csv
+# Collate results
+./data/interim/main_database.csv: ./src/scripts/collect_results/collate_results.py ./data/interim/spatiotemporal_matching_harps_database.csv ./data/interim/dimmings_matched_to_harps.csv ./data/interim/flares_matched_to_harps.csv
 	@python3 $<
 
 #################################################################################

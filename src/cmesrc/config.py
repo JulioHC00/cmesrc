@@ -55,3 +55,9 @@ SCORED_HARPS_MATCHING_FLARES_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "s
 
 MAIN_DATABASE_PICKLE = os.path.join(INTERIM_DATA_DIR, "main_database.pkl")
 MAIN_DATABASE = os.path.join(INTERIM_DATA_DIR, "main_database.csv")
+
+DIMMINGS_MATCHED_TO_HARPS = os.path.join(INTERIM_DATA_DIR, "dimmings_matched_to_harps.csv")
+DIMMINGS_MATCHED_TO_HARPS_PICKLE = os.path.join(INTERIM_DATA_DIR, "dimmings_matched_to_harps.pkl")
+
+FLARES_MATCHED_TO_HARPS = os.path.join(INTERIM_DATA_DIR, "flares_matched_to_harps.csv")
+FLARES_MATCHED_TO_HARPS_PICKLE = os.path.join(INTERIM_DATA_DIR, "flares_matched_to_harps.pkl")

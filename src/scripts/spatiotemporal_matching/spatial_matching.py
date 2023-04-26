@@ -11,7 +11,7 @@ import pandas as pd
 import multiprocessing as mp
 
 EXTRA_CME_WIDTH = 10
-HALO_MAX_SUN_CENTRE_DIST = 0.5
+HALO_MAX_SUN_CENTRE_DIST = 1
 
 rows = []
 

@@ -239,7 +239,13 @@ class BoundingBox():
         if self.is_point_inside(point):
             return 0
 
-        rotated_bbox = self.rotate_bbox(point.DATE)
+        # I'm not sure if I ever use this by giving it a non-rotated point
+        # I think I don't but just in case I kept the else
+        if type(self) == RotatedBoundingBox:
+            rotated_bbox = self
+        else:
+            rotated_bbox = self.rotate_bbox(point.DATE)
+
         bbox_coords = [rotated_bbox.LOWER_LEFT.get_cartesian_coords(), rotated_bbox.UPPER_RIGHT.get_cartesian_coords()]
         point_coords = point.get_cartesian_coords()
 
