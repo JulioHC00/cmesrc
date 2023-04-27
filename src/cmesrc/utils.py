@@ -6,7 +6,7 @@ from tqdm import tqdm
 from os import walk, system, name
 from os.path import join
 import pandas as pd
-from src.cmesrc.config import SWAN_DATA_DIR
+from src.cmesrc.config import SWAN_DATA_DIR, UPDATED_SWAN
 
 def clear_screen(): # for windows
     if name == 'nt':
@@ -55,3 +55,24 @@ def cache_swan_data() -> dict:
     clear_screen()
     return data_dict
 
+def cache_updated_swan_data() -> dict:
+    clear_screen()
+    print("\n==CACHING UPDATED SWAN DATA.==\n")
+    data_dict = dict()
+
+    for directoryName, subdirectoryName, fileList in walk(UPDATED_SWAN):
+        for fileName in tqdm(fileList):
+            harpnum = int(fileName.split('.')[0])
+
+            df = pd.read_csv(join(directoryName, fileName), sep="\t", na_values="None", usecols=['Timestamp', 'LAT_MIN', 'LON_MIN', 'LAT_MAX', 'LON_MAX']).dropna()
+
+            timestamps = list(df["Timestamp"].to_numpy())
+
+            df['Timestamp'] = Time(timestamps, format="iso")
+
+            df.set_index("Timestamp", drop=False, inplace=True)
+
+            data_dict[harpnum] = df
+
+    clear_screen()
+    return data_dict

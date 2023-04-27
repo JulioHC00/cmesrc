@@ -61,3 +61,5 @@ DIMMINGS_MATCHED_TO_HARPS_PICKLE = os.path.join(INTERIM_DATA_DIR, "dimmings_matc
 
 FLARES_MATCHED_TO_HARPS = os.path.join(INTERIM_DATA_DIR, "flares_matched_to_harps.csv")
 FLARES_MATCHED_TO_HARPS_PICKLE = os.path.join(INTERIM_DATA_DIR, "flares_matched_to_harps.pkl")
+
+UPDATED_SWAN = os.path.join(INTERIM_DATA_DIR, "SWAN/")
