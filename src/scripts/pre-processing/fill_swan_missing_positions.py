@@ -3,6 +3,7 @@ from src.cmesrc.config import UPDATED_SWAN
 from tqdm import tqdm
 from src.harps.harps import Harps
 import pandas as pd
+import numexpr as ne
 import numpy as np
 from os.path import join
 
@@ -44,17 +45,15 @@ def get_nan_intervals(nan_bbox_mask):
         
 
 for harpnum, swan_harp in tqdm(SWAN.items()):
-    new_swan_harp = swan_harp.copy()
-
-    new_swan_harp["IRBB"] = False
-
     nan_bbox_mask = swan_harp[["LON_MIN", "LON_MAX", "LAT_MIN", "LAT_MAX"]].isna().any(axis=1)
+
+    new_swan_harp = swan_harp.copy()
+    new_swan_harp["IRBB"] = False
 
     intervals = list(get_nan_intervals(nan_bbox_mask))
 
     for interval in intervals:
         start, end = interval
-
         middle = (start + end) // 2
 
         if start != 0:
@@ -67,50 +66,26 @@ for harpnum, swan_harp in tqdm(SWAN.items()):
         else:
             last_index = start - 1
 
-        first_ref_row = swan_harp.iloc[first_index]
-        last_ref_row = swan_harp.iloc[last_index]
+        first_harp_data = swan_harp.iloc[first_index][["Timestamp", "LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"]].to_list()
+        last_harp_data = swan_harp.iloc[last_index][["Timestamp", "LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"]].to_list()
 
-        first_harp_data = first_ref_row[["Timestamp", "LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"]].to_list()
-        last_harp_data = last_ref_row[["Timestamp", "LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"]].to_list()
+        first_harps = Harps(*first_harp_data)
+        last_harps = Harps(*last_harp_data)
 
-        try:
-            first_harps = Harps(*first_harp_data)
-        except (ValueError, TypeError):
-            print("FIRST HARP DATA")
-            print(harpnum)
-            print(first_harp_data)
-            raise
+        harps = [first_harps if i <= middle else last_harps for i in range(start, end)]
 
-        try:
-            last_harps = Harps(*last_harp_data)
-        except (ValueError, TypeError):
-            print("LAST HARP DATA")
-            print(harpnum)
-            print(last_harp_data)
-            print(last_ref_row)
-            raise
+        incomplete_rows = swan_harp.iloc[start:end]
+        incomplete_indices = incomplete_rows.index
 
-        for i in range(start, end):
-            if i <= middle:
-                harps = first_harps
-            else:
-                harps = last_harps
+        new_timestamps = incomplete_rows["Timestamp"].to_numpy()
+        new_bboxes = np.array([harps[i].rotate_bbox(new_timestamps[i]).get_raw_bbox() for i in range(len(harps))])
 
-            incomplete_row = swan_harp.iloc[i]
-            incomplete_index = incomplete_row.name
+        new_swan_harp.loc[incomplete_indices, "LON_MIN"] = new_bboxes[:, 0, 0]
+        new_swan_harp.loc[incomplete_indices, "LAT_MIN"] = new_bboxes[:, 0, 1]
+        new_swan_harp.loc[incomplete_indices, "LON_MAX"] = new_bboxes[:, 1, 0]
+        new_swan_harp.loc[incomplete_indices, "LAT_MAX"] = new_bboxes[:, 1, 1]
 
-            new_timestamp = incomplete_row["Timestamp"]
-
-            rotated_harps = harps.rotate_bbox(new_timestamp)
-
-            new_bbox = rotated_harps.get_raw_bbox()
-
-            new_swan_harp.at[incomplete_index, "LON_MIN"] = new_bbox[0][0]
-            new_swan_harp.at[incomplete_index, "LAT_MIN"] = new_bbox[0][1]
-            new_swan_harp.at[incomplete_index, "LON_MAX"] = new_bbox[1][0]
-            new_swan_harp.at[incomplete_index, "LAT_MAX"] = new_bbox[1][1]
-
-            new_swan_harp.at[incomplete_index, "IRBB"] = True
+        new_swan_harp.loc[incomplete_indices, "IRBB"] = True
 
     filename = f"{harpnum}.csv" 
 
