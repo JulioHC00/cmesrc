@@ -179,7 +179,15 @@ class BoundingBox():
                 units=new_units
                 )
 
-    def get_centre_point(self):
+    def get_centre_point(self, as_point: bool = False):
+        if as_point:
+            return Point(
+                    date = self.DATE,
+                    lon = (self.LOWER_LEFT.LON + self.UPPER_RIGHT.LON) / 2,
+                    lat = (self.LOWER_LEFT.LAT + self.UPPER_RIGHT.LAT) / 2,
+                    units = self.UNITS
+                    )
+
         return (self.LOWER_LEFT + self.UPPER_RIGHT) / 2
 
     def get_position_angle(self):
@@ -203,11 +211,32 @@ class BoundingBox():
     def _update_centre_point(self):
         self.CENTRE_POINT = self.get_centre_point()
 
-    def rotate_bbox(self, date, inplace:bool = False):
+    def rotate_bbox(self, date, keep_shape=False, inplace:bool = False):
         new_date = Time(date, format="iso")
         new_frame = HeliographicStonyhurst(obstime=new_date)
-        new_lower_left = self.LOWER_LEFT.rotate_coords(new_date)
-        new_upper_right = self.UPPER_RIGHT.rotate_coords(new_date)
+
+        if keep_shape:
+            new_centre = self.get_centre_point(as_point=True).rotate_coords(new_date)
+
+            width = self.UPPER_RIGHT.LON - self.LOWER_LEFT.LON
+            height = self.UPPER_RIGHT.LAT - self.LOWER_LEFT.LAT
+
+            new_lower_left = Point(
+                    date = new_date,
+                    lon = new_centre.LON - width / 2,
+                    lat = new_centre.LAT - height / 2,
+                    units = self.UNITS
+                    )
+            
+            new_upper_right = Point(
+                    date = new_date,
+                    lon = new_centre.LON + width / 2,
+                    lat = new_centre.LAT + height / 2,
+                    units = self.UNITS
+                    )
+        else:
+            new_lower_left = self.LOWER_LEFT.rotate_coords(new_date)
+            new_upper_right = self.UPPER_RIGHT.rotate_coords(new_date)
 
         if inplace:
             self.DATE = new_date

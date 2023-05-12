@@ -22,8 +22,8 @@ class Harps(BoundingBox):
                 )
         self.HARPNUM = HARPNUM
 
-    def rotate_bbox(self, date, inplace:bool = False):
-        new_bbox = super().rotate_bbox(date=date, inplace=inplace)
+    def rotate_bbox(self, date, keep_shape:bool = False, inplace:bool = False):
+        new_bbox = super().rotate_bbox(date=date, keep_shape=keep_shape, inplace=inplace)
 
         return RotatedHarps(
                 date = new_bbox.DATE,

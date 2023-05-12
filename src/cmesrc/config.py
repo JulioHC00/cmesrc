@@ -12,18 +12,22 @@ PROCESSED_DATA_DIR = os.path.join(DATA_DIR, "processed/")
 LASCO_DATA_DIR = os.path.join(RAW_DATA_DIR, "lasco/")
 MVTS_DATA_DIR = os.path.join(RAW_DATA_DIR, "mvts/")
 SWAN_DATA_DIR = os.path.join(MVTS_DATA_DIR, "SWAN/")
+DT_SWAN_DATA_DIR = os.path.join(MVTS_DATA_DIR, "DT_SWAN/")
 PARTITIONS_DATA_DIR = os.path.join(MVTS_DATA_DIR, "partitions/")
 DIMMINGS_DATA_DIR = os.path.join(RAW_DATA_DIR, "dimmings/")
 FLARES_DATA_DIR = os.path.join(RAW_DATA_DIR, "flares/")
 REPORTS_DIR = os.path.join(ROOT, "reports/")
 FIGURES_DIR = os.path.join(REPORTS_DIR, "figures/")
 OVERVIEW_FIGURES_DIR = os.path.join(FIGURES_DIR, "overviews/")
+SDOML_FOLDER = os.path.join(RAW_DATA_DIR, "sdoml/")
 
 # Raw data files
 
 RAW_LASCO_CME_CATALOGUE = os.path.join(LASCO_DATA_DIR, "univ_all.txt")
 RAW_DIMMINGS_CATALOGUE = os.path.join(DIMMINGS_DATA_DIR, "dimmings.csv")
 RAW_FLARE_CATALOGUE = os.path.join(FLARES_DATA_DIR, "goes_sxr_flares.csv")
+
+SDOML_TIMESTAMP_INFO = os.path.join(SDOML_FOLDER, "timestamps_info_dict.pkl")
 
 # Interim data files
 
@@ -63,3 +67,5 @@ FLARES_MATCHED_TO_HARPS = os.path.join(INTERIM_DATA_DIR, "flares_matched_to_harp
 FLARES_MATCHED_TO_HARPS_PICKLE = os.path.join(INTERIM_DATA_DIR, "flares_matched_to_harps.pkl")
 
 UPDATED_SWAN = os.path.join(INTERIM_DATA_DIR, "SWAN/")
+
+CMESRC_DB = os.path.join(PROCESSED_DATA_DIR, 'cmesrc.db')

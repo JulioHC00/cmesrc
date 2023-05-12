@@ -1,0 +1,90 @@
+import sqlite3
+import numpy as np
+
+from src.cmesrc.config import CMESRC_DB
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+con = sqlite3.connect(CMESRC_DB)
+con.execute("PRAGMA foreign_keys = ON")
+cur = con.cursor()
+
+cur.execute("SELECT timestamp FROM images")
+timestamps = cur.fetchall()
+
+def distance_between_bboxes(bboxA, bboxB):
+    # Original bbox = [harpnum, xmin, xmax, ymin, ymax, xcen, ycen]
+    # Convert to bbox = [xmin, ymin, xmax, ymax]
+    bboxA = [bboxA[1], bboxA[3], bboxA[2], bboxA[4]]
+    bboxB = [bboxB[1], bboxB[3], bboxB[2], bboxB[4]]
+
+    inner_bbox = [
+        max(bboxA[0], bboxB[0]),
+        max(bboxA[1], bboxB[1]),
+        min(bboxA[2], bboxB[2]),
+        min(bboxA[3], bboxB[3])
+    ]
+
+    width = inner_bbox[2] - inner_bbox[0]
+    height = inner_bbox[3] - inner_bbox[1]
+
+    dist_width = min(0, width)
+    dist_height = min(0, height)
+
+    dist = dist_width**2 + dist_height**2
+
+    return dist
+
+cur.execute("DROP TABLE IF EXISTS distance_matrix")
+cur.executescript("""
+CREATE TABLE IF NOT EXISTS distance_matrix (
+    harpnum1 INTEGER NOT NULL REFERENCES harps (harpnum),
+    harpnum2 INTEGER NOT NULL CHECK (harpnum1 < harpnum2) REFERENCES harps (harpnum),
+    timestamp TEXT NOT NULL REFERENCES images (timestamp),
+    dist REAL NOT NULL CHECK (dist >= 0),
+    PRIMARY KEY (harpnum1, harpnum2, timestamp)
+    );
+""")
+
+cur.execute("CREATE INDEX IF NOT EXISTS timestamp_index ON harps_pixel_bbox (timestamp);")
+cur.execute("CREATE INDEX IF NOT EXISTS bbox_timestamp_index ON harps_bbox (timestamp);")
+con.commit()
+
+i = 0
+for timestamp in tqdm(timestamps):
+    timestamp = timestamp[0]
+    # This one to use pixel bbox
+#    cur.execute("SELECT harpnum, x_min, x_max, y_min, y_max, x_cen, y_cen FROM harps_pixel_bbox WHERE timestamp = ?", (timestamp,))
+
+    # This one to use physical bbox
+    cur.execute("SELECT harpnum, londtmin, londtmax, latdtmin, latdtmax FROM harps_bbox WHERE timestamp = ?", (timestamp,))
+    bboxes = cur.fetchall()
+
+    from copy import deepcopy
+    CUTOUT_SIZE = float(224)
+    bboxes_copy = deepcopy(bboxes)
+    i = 0
+    while len(bboxes_copy) != 0:
+        bbox1 = bboxes_copy.pop()
+
+        for bbox2 in bboxes_copy:
+            harpnum1 = min(bbox1[0], bbox2[0]) # Smallest harpnum, used for cutout
+            harpnum2 = max(bbox1[0], bbox2[0]) # Larger harpnum
+
+            bboxA = [bbox1 if bbox1[0] == harpnum1 else bbox2][0] # Smallest harpnum
+            bboxB = [bbox2 if bbox2[0] == harpnum2 else bbox1][0] # Larger harpnum
+
+            dist = distance_between_bboxes(bboxA, bboxB)
+
+            cur.execute("INSERT OR REPLACE INTO distance_matrix (harpnum1, harpnum2, timestamp, dist) VALUES (?, ?, ?, ?)", (harpnum1, harpnum2, timestamp, dist))
+
+
+
+    i += 1
+
+    if i % 1000 == 0:
+        con.commit()
+
+con.commit()
+con.close()
+        

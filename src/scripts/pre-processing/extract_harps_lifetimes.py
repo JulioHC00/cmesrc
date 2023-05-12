@@ -5,12 +5,12 @@ Uses the SWAN files to extract a list of all HARPS regions along with the time o
 
 import os
 import pandas as pd
-from src.cmesrc.config import SWAN_DATA_DIR, HARPS_LIFETIME_DATABSE
+from src.cmesrc.config import UPDATED_SWAN, HARPS_LIFETIME_DATABSE
 
 def generate_HARPS_lifetime_database():
     harpsDict = dict()
 
-    for directoryName, subdirectoryName, fileList in os.walk(SWAN_DATA_DIR):
+    for directoryName, subdirectoryName, fileList in os.walk(UPDATED_SWAN):
         for fileName in fileList:
             harpsNum = str(fileName.split(".")[0]) # To remove the file extension 
 

@@ -3,10 +3,11 @@ from datetime import datetime, timedelta
 import astropy.units as u
 from bisect import bisect_left
 from tqdm import tqdm
+import numpy as np
 from os import walk, system, name
 from os.path import join
 import pandas as pd
-from src.cmesrc.config import SWAN_DATA_DIR, UPDATED_SWAN
+from src.cmesrc.config import DT_SWAN_DATA_DIR, SWAN_DATA_DIR, UPDATED_SWAN
 
 def clear_screen(): # for windows
     if name == 'nt':
@@ -42,7 +43,7 @@ def cache_swan_data() -> dict:
         for fileName in tqdm(fileList):
             harpnum = int(fileName.split('.')[0])
 
-            df = pd.read_csv(join(directoryName, fileName), sep="\t", na_values="None", usecols=['Timestamp', 'LAT_MIN', 'LON_MIN', 'LAT_MAX', 'LON_MAX']).dropna()
+            df = pd.read_csv(join(directoryName, fileName), sep="\t")
 
             timestamps = list(df["Timestamp"].to_numpy())
 
@@ -55,6 +56,71 @@ def cache_swan_data() -> dict:
     clear_screen()
     return data_dict
 
+def cache_dt_swan_data() -> dict:
+    clear_screen()
+    print("\n==CACHING SWAN DATA.==\n")
+    data_dict = dict()
+
+    for directoryName, subdirectoryName, fileList in walk(DT_SWAN_DATA_DIR):
+        for fileName in tqdm(fileList):
+            harpnum = int(fileName.split('.')[0])
+
+            df = pd.read_csv(join(directoryName, fileName), sep="\t")
+
+            timestamps = list(df["Timestamp"].to_numpy())
+
+            df['Timestamp'] = Time(timestamps, format="iso")
+
+            df.set_index("Timestamp", drop=False, inplace=True)
+
+            data_dict[harpnum] = df
+
+    clear_screen()
+    return data_dict
+
+def filepaths_dt_swan_data() -> dict:
+    clear_screen()
+    print("\n==CACHING SWAN DATA.==\n")
+    data_paths = dict()
+
+    for directoryName, subdirectoryName, fileList in walk(DT_SWAN_DATA_DIR):
+        for fileName in tqdm(fileList):
+            harpnum = int(fileName.split('.')[0])
+
+            filepath = join(directoryName, fileName)
+
+            data_paths[harpnum] = filepath
+
+    clear_screen()
+    return data_paths
+
+def filepaths_updated_swan_data() -> dict:
+    clear_screen()
+    print("\n==CACHING SWAN DATA.==\n")
+    data_paths = dict()
+
+    for directoryName, subdirectoryName, fileList in walk(UPDATED_SWAN):
+        for fileName in tqdm(fileList):
+            harpnum = int(fileName.split('.')[0])
+
+            filepath = join(directoryName, fileName)
+
+            data_paths[harpnum] = filepath
+
+    clear_screen()
+    return data_paths
+
+def read_SWAN_filepath(filepath: str) -> pd.DataFrame:
+    df = pd.read_csv(filepath, sep="\t")
+
+    timestamps = list(df["Timestamp"].to_numpy())
+
+    df['Timestamp'] = Time(timestamps, format="iso")
+
+    df.set_index("Timestamp", drop=False, inplace=True)
+
+    return df
+
 def cache_updated_swan_data() -> dict:
     clear_screen()
     print("\n==CACHING UPDATED SWAN DATA.==\n")
@@ -64,7 +130,7 @@ def cache_updated_swan_data() -> dict:
         for fileName in tqdm(fileList):
             harpnum = int(fileName.split('.')[0])
 
-            df = pd.read_csv(join(directoryName, fileName), sep="\t", na_values="None", usecols=['Timestamp', 'LAT_MIN', 'LON_MIN', 'LAT_MAX', 'LON_MAX']).dropna()
+            df = pd.read_csv(join(directoryName, fileName), sep="\t")
 
             timestamps = list(df["Timestamp"].to_numpy())
 

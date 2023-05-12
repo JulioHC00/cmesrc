@@ -3,7 +3,7 @@ from astropy.time import Time
 from tqdm import tqdm
 from src.harps.harps import Harps
 from src.dimmings.dimmings import Dimming
-from src.cmesrc.utils import clear_screen, cache_swan_data, get_closest_harps_timestamp
+from src.cmesrc.utils import clear_screen, filepaths_updated_swan_data, get_closest_harps_timestamp, read_SWAN_filepath
 import numpy as np
 from src.cmesrc.config import (
     RAW_DIMMINGS_CATALOGUE, 
@@ -15,8 +15,8 @@ from src.cmesrc.config import (
 from bisect import bisect_right
 
 DEG_TO_RAD = np.pi / 180
-HALF_POINTS_DIST = 10 * DEG_TO_RAD
-NO_POINTS_DIST = 15 * DEG_TO_RAD
+HALF_POINTS_DIST = 5 * DEG_TO_RAD
+NO_POINTS_DIST = 10 * DEG_TO_RAD
 
 def gather_dimming_distances():
     clear_screen()
@@ -104,7 +104,7 @@ def gather_dimming_distances():
     # This will be similar to the spatial matching of the CMEs, at least in the
     # beginning
 
-    SWAN_DATA = cache_swan_data()
+    SWAN_DATA = filepaths_updated_swan_data()
 
     clear_screen()
 
@@ -116,14 +116,14 @@ def gather_dimming_distances():
     grouped_by_harps = dimmings_harps_df.groupby("HARPNUM")
 
     harps_indices = None
-    ALL_LON_MIN = []
-    ALL_LAT_MIN = []
-    ALL_LON_MAX = []
-    ALL_LAT_MAX = []
+    ALL_LONDTMIN = []
+    ALL_LATDTMIN = []
+    ALL_LONDTMAX = []
+    ALL_LATDTMAX = []
     ALL_RAW_HARPS_TIMES = []
 
     for harpnum, group in tqdm(grouped_by_harps, total=grouped_by_harps.ngroups):
-        harps_data = SWAN_DATA[harpnum]
+        harps_data = read_SWAN_filepath(SWAN_DATA[harpnum])
         harps_timestamps = harps_data["Timestamp"].to_numpy()
 
         dimming_times = group["max_detection_time"].to_numpy()
@@ -139,18 +139,18 @@ def gather_dimming_distances():
             closest_time_index = get_closest_harps_timestamp(harps_timestamps, dimming_time)
             dimmings_closest_time_indices.append(closest_time_index)
 
-        LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = harps_data.loc[dimmings_closest_time_indices, ["LON_MIN","LAT_MIN","LON_MAX","LAT_MAX"]].to_numpy().T
+        LONDTMIN, LATDTMIN, LONDTMAX, LATDTMAX = harps_data.loc[dimmings_closest_time_indices, ["LONDTMIN","LATDTMIN","LONDTMAX","LATDTMAX"]].to_numpy().T
 
-        ALL_LON_MIN.extend(list(LON_MIN))
-        ALL_LAT_MIN.extend(list(LAT_MIN))
-        ALL_LON_MAX.extend(list(LON_MAX))
-        ALL_LAT_MAX.extend(list(LAT_MAX))
+        ALL_LONDTMIN.extend(list(LONDTMIN))
+        ALL_LATDTMIN.extend(list(LATDTMIN))
+        ALL_LONDTMAX.extend(list(LONDTMAX))
+        ALL_LATDTMAX.extend(list(LATDTMAX))
         ALL_RAW_HARPS_TIMES.extend(list(dimmings_closest_time_indices))
     
-    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LON_MIN"] = ALL_LON_MIN
-    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LAT_MIN"] = ALL_LAT_MIN
-    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LON_MAX"] = ALL_LON_MAX
-    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LAT_MAX"] = ALL_LAT_MAX
+    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LONDTMIN"] = ALL_LONDTMIN
+    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LATDTMIN"] = ALL_LATDTMIN
+    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LONDTMAX"] = ALL_LONDTMAX
+    dimmings_harps_df.at[harps_indices, "HARPS_RAW_LATDTMAX"] = ALL_LATDTMAX
     dimmings_harps_df.at[harps_indices, "HARPS_RAW_DATE"] = ALL_RAW_HARPS_TIMES
 
     del SWAN_DATA
@@ -169,7 +169,7 @@ def gather_dimming_distances():
     for idx, data in tqdm(dimmings_harps_df.iterrows(), total=dimmings_harps_df.shape[0]):
 
         dimming_data = data[["max_detection_time", "longitude", "latitude"]]
-        harps_data = data[["HARPS_RAW_DATE", "HARPS_RAW_LON_MIN", "HARPS_RAW_LAT_MIN", "HARPS_RAW_LON_MAX", "HARPS_RAW_LAT_MAX", "HARPNUM"]].to_numpy()
+        harps_data = data[["HARPS_RAW_DATE", "HARPS_RAW_LONDTMIN", "HARPS_RAW_LATDTMIN", "HARPS_RAW_LONDTMAX", "HARPS_RAW_LATDTMAX", "HARPNUM"]].to_numpy()
 
         harps = Harps(*harps_data)
         dimming = Dimming(*dimming_data)
@@ -226,6 +226,16 @@ def gather_dimming_distances():
     print(f"UNMATCHED DIMMINGS: {unmatched_dimmings}")
 
     scored_data.sort_values(by=["dimming_id", "POSITION_SCORES"], ascending=[True, False], inplace=True)
+
+    # Test before saving
+
+    matched_data = scored_data[scored_data["MATCH"]]
+
+    duplicate_matches = matched_data.duplicated(subset=["dimming_id", "MATCH"], keep=False)
+
+    if np.any(duplicate_matches):
+        print(scored_data[duplicate_matches])
+        raise ValueError("Duplicate matches found")
 
     scored_data.to_csv(DIMMINGS_MATCHED_TO_HARPS, index=False)
     scored_data.to_pickle(DIMMINGS_MATCHED_TO_HARPS_PICKLE)

@@ -2,13 +2,14 @@
 Match temporally co-occurent HARPS regions to CMEs
 """
 from src.cmesrc.config import TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, MAIN_DATABASE, MAIN_DATABASE_PICKLE
-from src.cmesrc.utils import get_closest_harps_timestamp, cache_swan_data, clear_screen
+from src.cmesrc.utils import get_closest_harps_timestamp, filepaths_updated_swan_data, clear_screen, read_SWAN_filepath
 from src.cmes.cmes import CME
 from src.harps.harps import Harps
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
 import multiprocessing as mp
+import astropy.units as u
 
 EXTRA_CME_WIDTH = 10
 HALO_MAX_SUN_CENTRE_DIST = 1
@@ -16,7 +17,7 @@ HALO_MAX_SUN_CENTRE_DIST = 1
 rows = []
 
 def setup():
-    SWAN_DATA = cache_swan_data()
+    SWAN_DATA = filepaths_updated_swan_data()
 
     temporal_matching_harps = pd.read_pickle(TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
     temporal_matching_harps.set_index("CME_HARPNUM_ID", inplace=True, drop=False)
@@ -24,16 +25,16 @@ def setup():
     grouped_matching_harps = temporal_matching_harps.groupby("HARPNUM") 
     final_database = temporal_matching_harps.copy()
     harps_indices = None
-    ALL_LON_MIN = []
-    ALL_LAT_MIN = []
-    ALL_LON_MAX = []
-    ALL_LAT_MAX = []
+    ALL_LONDTMIN = []
+    ALL_LATDTMIN = []
+    ALL_LONDTMAX = []
+    ALL_LATDTMAX = []
     ALL_RAW_HARPS_TIMES = []
 
     print("\n===Finding Spatially Matching Harps.===\n")
     print("\n=Finding Closest Harps Positions=\n")
     for harpnum, group in tqdm(grouped_matching_harps):
-        harps_data = SWAN_DATA[harpnum]
+        harps_data = read_SWAN_filepath(SWAN_DATA[harpnum])
         cme_times = group["CME_DATE"].to_numpy()
         harps_timestamps = harps_data["Timestamp"].to_numpy()
         if harps_indices is None:
@@ -43,20 +44,21 @@ def setup():
 
         cme_closest_harps_time_indices = []
         for cme_time in cme_times:
-            cme_closest_harps_time_indices.append(get_closest_harps_timestamp(harps_timestamps, cme_time))
+            closest_timestamps = get_closest_harps_timestamp(harps_timestamps, cme_time)
+            cme_closest_harps_time_indices.append(closest_timestamps)
 
-        LON_MIN, LAT_MIN, LON_MAX, LAT_MAX = harps_data.loc[cme_closest_harps_time_indices, ["LON_MIN","LAT_MIN","LON_MAX","LAT_MAX"]].to_numpy().T
+        LONDTMIN, LATDTMIN, LONDTMAX, LATDTMAX = harps_data.loc[cme_closest_harps_time_indices, ["LONDTMIN","LATDTMIN","LONDTMAX","LATDTMAX"]].to_numpy().T
 
-        ALL_LON_MIN.extend(list(LON_MIN))
-        ALL_LAT_MIN.extend(list(LAT_MIN))
-        ALL_LON_MAX.extend(list(LON_MAX))
-        ALL_LAT_MAX.extend(list(LAT_MAX))
+        ALL_LONDTMIN.extend(list(LONDTMIN))
+        ALL_LATDTMIN.extend(list(LATDTMIN))
+        ALL_LONDTMAX.extend(list(LONDTMAX))
+        ALL_LATDTMAX.extend(list(LATDTMAX))
         ALL_RAW_HARPS_TIMES.extend(list(cme_closest_harps_time_indices))
 
-    final_database.at[harps_indices, "HARPS_RAW_LON_MIN"] = ALL_LON_MIN
-    final_database.at[harps_indices, "HARPS_RAW_LAT_MIN"] = ALL_LAT_MIN
-    final_database.at[harps_indices, "HARPS_RAW_LON_MAX"] = ALL_LON_MAX
-    final_database.at[harps_indices, "HARPS_RAW_LAT_MAX"] = ALL_LAT_MAX
+    final_database.at[harps_indices, "HARPS_RAW_LONDTMIN"] = ALL_LONDTMIN
+    final_database.at[harps_indices, "HARPS_RAW_LATDTMIN"] = ALL_LATDTMIN
+    final_database.at[harps_indices, "HARPS_RAW_LONDTMAX"] = ALL_LONDTMAX
+    final_database.at[harps_indices, "HARPS_RAW_LATDTMAX"] = ALL_LATDTMAX
     final_database.at[harps_indices, "HARPS_RAW_DATE"] = ALL_RAW_HARPS_TIMES
 
     final_database["HARPS_DATE"] = None
@@ -65,10 +67,10 @@ def setup():
     final_database["HARPS_PA"] = None
     final_database["CME_HARPS_PA_DIFF"] = None
     final_database["HARPS_RAW_BBOX"] = None
-    final_database["HARPS_LON_MIN"] = None
-    final_database["HARPS_LAT_MIN"] = None
-    final_database["HARPS_LON_MAX"] = None
-    final_database["HARPS_LAT_MAX"] = None
+    final_database["HARPS_LONDTMIN"] = None
+    final_database["HARPS_LATDTMIN"] = None
+    final_database["HARPS_LONDTMAX"] = None
+    final_database["HARPS_LATDTMAX"] = None
 
     del SWAN_DATA
     return final_database
@@ -89,21 +91,23 @@ def findSpatialCoOcurrentHarps(cme_ids):
 
         for idx, harps_data in group.iterrows():
             HARPS_DATE = harps_data["HARPS_RAW_DATE"]
-            LON_MIN = harps_data["HARPS_RAW_LON_MIN"]
-            LAT_MIN = harps_data["HARPS_RAW_LAT_MIN"]
-            LON_MAX = harps_data["HARPS_RAW_LON_MAX"]
-            LAT_MAX = harps_data["HARPS_RAW_LAT_MAX"]
+            LONDTMIN = harps_data["HARPS_RAW_LONDTMIN"]
+            LATDTMIN = harps_data["HARPS_RAW_LATDTMIN"]
+            LONDTMAX = harps_data["HARPS_RAW_LONDTMAX"]
+            LATDTMAX = harps_data["HARPS_RAW_LATDTMAX"]
             HARPNUM = harps_data["HARPNUM"]
 
 
             harps = Harps(
                     date = HARPS_DATE,
-                    lon_min = LON_MIN,
-                    lat_min = LAT_MIN,
-                    lon_max = LON_MAX,
-                    lat_max = LAT_MAX,
+                    lon_min = LONDTMIN,
+                    lat_min = LATDTMIN,
+                    lon_max = LONDTMAX,
+                    lat_max = LATDTMAX,
                     HARPNUM = HARPNUM
-                          ).rotate_bbox(CME_DETECTION_DATE)
+                          )
+            if np.abs(HARPS_DATE - CME_DETECTION_DATE) > 12 * u.min:
+                harps = harps.rotate_bbox(CME_DETECTION_DATE) # Rotate if no timestamp within 12 minutes
 
 #            return_database.at[harps_data.index, "HARPS_SPAT_CONSIST"] = is_harps_within_boundary
             return_database.at[idx, "HARPS_DATE"] = harps.DATE.to_string()
@@ -112,10 +116,10 @@ def findSpatialCoOcurrentHarps(cme_ids):
             return_database.at[idx, "HARPS_PA"] = harps.get_position_angle()
             return_database.at[idx, "CME_HARPS_PA_DIFF"] = cme.get_bbox_pa_diff(harps)
             return_database.at[idx, "HARPS_RAW_BBOX"] = harps.get_raw_bbox()
-            return_database.at[idx, "HARPS_LON_MIN"] = harps.get_raw_bbox()[0][0]
-            return_database.at[idx, "HARPS_LAT_MIN"] = harps.get_raw_bbox()[0][1]
-            return_database.at[idx, "HARPS_LON_MAX"] = harps.get_raw_bbox()[1][0]
-            return_database.at[idx, "HARPS_LAT_MAX"] = harps.get_raw_bbox()[1][1]
+            return_database.at[idx, "HARPS_LONDTMIN"] = harps.get_raw_bbox()[0][0]
+            return_database.at[idx, "HARPS_LATDTMIN"] = harps.get_raw_bbox()[0][1]
+            return_database.at[idx, "HARPS_LONDTMAX"] = harps.get_raw_bbox()[1][0]
+            return_database.at[idx, "HARPS_LATDTMAX"] = harps.get_raw_bbox()[1][1]
     return return_database
 
 def find_matches_and_save(final_database):

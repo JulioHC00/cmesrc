@@ -1,15 +1,20 @@
-from src.cmesrc.utils import cache_swan_data, clear_screen
+from src.cmesrc.utils import filepaths_dt_swan_data, clear_screen, read_SWAN_filepath
 from src.cmesrc.config import UPDATED_SWAN
 from tqdm import tqdm
 from src.harps.harps import Harps
 import pandas as pd
 import numexpr as ne
 import numpy as np
-from os.path import join
+from os.path import join, exists
+from os import mkdir
+import concurrent.futures
+
+if not exists(UPDATED_SWAN):
+    mkdir(UPDATED_SWAN)
 
 clear_screen()
 
-SWAN = cache_swan_data()
+SWAN = filepaths_dt_swan_data()
 
 # SWAN = {
 #     "test": pd.read_csv("/home/julio/cmesrc/data/raw/mvts/SWAN/partition4/4588.csv", sep="\t")
@@ -44,8 +49,11 @@ def get_nan_intervals(nan_bbox_mask):
             end = None
         
 
-for harpnum, swan_harp in tqdm(SWAN.items()):
-    nan_bbox_mask = swan_harp[["LON_MIN", "LON_MAX", "LAT_MIN", "LAT_MAX"]].isna().any(axis=1)
+def process_swan_item(swan_item):
+    harpnum, swan_filepath = swan_item
+    swan_harp = read_SWAN_filepath(swan_filepath)
+
+    nan_bbox_mask = swan_harp[["LONDTMIN", "LONDTMAX", "LATDTMIN", "LATDTMAX"]].isna().any(axis=1)
 
     new_swan_harp = swan_harp.copy()
     new_swan_harp["IRBB"] = False
@@ -66,8 +74,8 @@ for harpnum, swan_harp in tqdm(SWAN.items()):
         else:
             last_index = start - 1
 
-        first_harp_data = swan_harp.iloc[first_index][["Timestamp", "LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"]].to_list()
-        last_harp_data = swan_harp.iloc[last_index][["Timestamp", "LON_MIN", "LAT_MIN", "LON_MAX", "LAT_MAX"]].to_list()
+        first_harp_data = swan_harp.iloc[first_index][["Timestamp", "LONDTMIN", "LATDTMIN", "LONDTMAX", "LATDTMAX"]].to_list()
+        last_harp_data = swan_harp.iloc[last_index][["Timestamp", "LONDTMIN", "LATDTMIN", "LONDTMAX", "LATDTMAX"]].to_list()
 
         first_harps = Harps(*first_harp_data)
         last_harps = Harps(*last_harp_data)
@@ -78,15 +86,28 @@ for harpnum, swan_harp in tqdm(SWAN.items()):
         incomplete_indices = incomplete_rows.index
 
         new_timestamps = incomplete_rows["Timestamp"].to_numpy()
-        new_bboxes = np.array([harps[i].rotate_bbox(new_timestamps[i]).get_raw_bbox() for i in range(len(harps))])
+        new_bboxes = np.array([harps[i].rotate_bbox(new_timestamps[i], keep_shape=True).get_raw_bbox() for i in range(len(harps))])
 
-        new_swan_harp.loc[incomplete_indices, "LON_MIN"] = new_bboxes[:, 0, 0]
-        new_swan_harp.loc[incomplete_indices, "LAT_MIN"] = new_bboxes[:, 0, 1]
-        new_swan_harp.loc[incomplete_indices, "LON_MAX"] = new_bboxes[:, 1, 0]
-        new_swan_harp.loc[incomplete_indices, "LAT_MAX"] = new_bboxes[:, 1, 1]
+        new_swan_harp.loc[incomplete_indices, "LONDTMIN"] = new_bboxes[:, 0, 0]
+        new_swan_harp.loc[incomplete_indices, "LATDTMIN"] = new_bboxes[:, 0, 1]
+        new_swan_harp.loc[incomplete_indices, "LONDTMAX"] = new_bboxes[:, 1, 0]
+        new_swan_harp.loc[incomplete_indices, "LATDTMAX"] = new_bboxes[:, 1, 1]
 
         new_swan_harp.loc[incomplete_indices, "IRBB"] = True
 
     filename = f"{harpnum}.csv" 
 
     new_swan_harp.to_csv(join(UPDATED_SWAN, filename), sep="\t", index=False)
+
+
+# for swan_item in tqdm(SWAN.items()):
+#     process_swan_item(swan_item)
+
+
+num_threads = 4
+
+with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
+    futures = [executor.submit(process_swan_item, swan_item) for swan_item in SWAN.items()]
+
+    for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+        pass
