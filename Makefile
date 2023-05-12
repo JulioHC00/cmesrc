@@ -66,11 +66,19 @@ test_environment:
 # PROJECT RULES                                                                 #
 #################################################################################
 
+ORIG_SWAN := $(wildcard ./data/raw/mvts/DT_SWAN/*.csv)
+UPDATED_SWAN := $(patsubst ./data/raw/mvts/DT_SWAN/%.csv, ./data/interim/SWAN/%.csv, $(ORIG_SWAN))
+
 .PHONY: all
 all: ./data/interim/main_database.csv
 
+## Fill missing SWAN positions
+
+$(UPDATED_SWAN): ./src/scripts/pre-processing/fill_swan_missing_positions.py $(ORIG_SWAN)
+	@python3 $<
+
 ## Create HARPS lifetime database
-./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py
+./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py $(UPDATED_SWAN)
 	@python3 $<
 
 ## Parse LASCO CME Database
