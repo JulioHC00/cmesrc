@@ -78,6 +78,7 @@ for harpnum, harp_filepath in tqdm(SWAN.items()):
                     flares_rows.append(new_flare)
     
 flares_data = pd.DataFrame(flares_rows)
+flares_data = flares_data.drop_duplicates(subset=["FLARE_ID"], keep="first")
 
 # Test for duplicates before saving
 

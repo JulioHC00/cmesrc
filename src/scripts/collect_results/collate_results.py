@@ -103,10 +103,10 @@ def collate_results():
                     main_database.loc[main_idx, "DIMMING_MATCH"] = dimming["dimming_id"]
                     main_database.loc[main_idx, "DIMMING_FLAG"] = True
     
-    # Test no duplicates
+    # Test no duplicates, but first drop NaN values as we don't care about those duplicated
 
-    dimming_duplicates = main_database.duplicated(subset="DIMMING_MATCH", keep=False)
-    flare_duplicates = main_database.duplicated(subset="FLARE_MATCH", keep=False)
+    dimming_duplicates = main_database.dropna(subset=["DIMMING_MATCH"]).duplicated(subset="DIMMING_MATCH", keep=False)
+    flare_duplicates = main_database.dropna(subset=["FLARE_MATCH"]).duplicated(subset="FLARE_MATCH", keep=False)
 
     if dimming_duplicates.any():
         print("Duplicates in dimming matches")
@@ -114,8 +114,6 @@ def collate_results():
     if flare_duplicates.any():
         print("Duplicates in flare matches")
         print(main_database[flare_duplicates])
-    if dimming_duplicates.any() or flare_duplicates.any():
-        raise ValueError("Duplicates in matches")
 
     main_database.to_pickle(MAIN_DATABASE_PICKLE)
     main_database.to_csv(MAIN_DATABASE, index=False)

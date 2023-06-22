@@ -1,4 +1,3 @@
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from os import walk
@@ -7,7 +6,7 @@ from tqdm import tqdm
 from astropy.time import Time
 from os.path import join
 from matplotlib.patches import Wedge, Rectangle
-from src.cmesrc.config import SWAN_DATA_DIR, ALL_MATCHING_HARPS_DATABASE_PICKLE, SCORED_HARPS_MATCHING_DIMMINGS_DATABASE_PICKLE, OVERVIEW_FIGURES_DIR, SCORED_HARPS_MATCHING_FLARES_DATABASE_PICKLE, MAIN_DATABASE_PICKLE
+from src.cmesrc.config import SWAN_DATA_DIR, ALL_MATCHING_HARPS_DATABASE_PICKLE, DIMMINGS_MATCHED_TO_HARPS_PICKLE, OVERVIEW_FIGURES_DIR, FLARES_MATCHED_TO_HARPS_PICKLE, MAIN_DATABASE_PICKLE
 from src.cmesrc.utils import get_closest_harps_timestamp
 from src.harps.harps import Harps
 from src.cmes.cmes import CME
@@ -18,6 +17,7 @@ from astropy.coordinates import Angle
 from sunpy.coordinates import frames
 from src.dimmings.dimmings import Dimming
 import sunpy.map
+from src.scripts.collect_results.collate_results import MAX_DIMMING_TIME_AFTER_CME, MAX_FLARE_TIME_AFTER_CME, MAX_DIMMING_TIME_BEFORE_CME, MAX_FLARE_TIME_BEFORE_CME
 
 transparent_white = (1, 1, 1, 0.4)
 
@@ -26,20 +26,44 @@ transparent_white = (1, 1, 1, 0.4)
 
 main_data = pd.read_pickle(MAIN_DATABASE_PICKLE)
 
-harps_data = pd.read_pickle(MAIN_DATABASE_PICKLE)
-harps_data.set_index("CME_ID", drop=True, inplace=True)
-dimmings_data = pd.read_pickle(SCORED_HARPS_MATCHING_DIMMINGS_DATABASE_PICKLE)
-dimmings_data.set_index("CME_ID", drop=True, inplace=True)
+main_data["CME_HARPNUM_MATCH"] = (
+    main_data["HARPS_SPAT_CONSIST"] &
+    main_data["DIMMING_FLAG"] &
+    main_data["FLARE_FLAG"] &
+    main_data["FLARE_CLASS_FLAG"]
+)
 
-flares_data = pd.read_pickle(SCORED_HARPS_MATCHING_FLARES_DATABASE_PICKLE)
-flares_data.set_index("CME_ID", drop=True, inplace=True)
+harps_data = pd.read_pickle(MAIN_DATABASE_PICKLE)
+harps_data.set_index("CME_HARPNUM_ID", drop=True, inplace=True)
+dimmings_data = pd.read_pickle(DIMMINGS_MATCHED_TO_HARPS_PICKLE)
+#dimmings_data.set_index("CME_ID", drop=True, inplace=True)
+
+flares_data = pd.read_pickle(FLARES_MATCHED_TO_HARPS_PICKLE)
+#flares_data.set_index("CME_ID", drop=True, inplace=True)
 
 grouped_main_data = main_data.groupby("CME_ID")
 
 grouped_harps_data = harps_data.groupby("CME_ID")
-grouped_dimmings_data = dimmings_data.groupby("CME_ID")
-grouped_flares_data = flares_data.groupby("CME_ID")
+#grouped_dimmings_data = dimmings_data.groupby("CME_ID")
+#grouped_flares_data = flares_data.groupby("CME_ID")
 
+grouped_dimmings_data = dimmings_data.groupby("dimming_id")
+
+new_dimming_rows = []
+
+for dimming_id, dimming_data in grouped_dimmings_data:
+    sorted_dimming_data = dimming_data.sort_values(by="MATCH", ascending=False)
+    choosen_dimming = sorted_dimming_data.iloc[0]
+    is_matched = choosen_dimming["MATCH"]
+
+    new_row = {
+        "DIMMING_ID": dimming_id,
+        "DIMMING_DATE": choosen_dimming["start_time"],
+        "DIMMING_LON": choosen_dimming["longitude"],
+        "DIMMING_LAT": choosen_dimming["latitude"],
+        "MATCH": is_matched,
+        "HARPNUM": choosen_dimming["HARPNUM"] if is_matched else None,
+    }
 
 
 #|%%--%%| <WhTajwwSLc|xM1yvXYPEM>
@@ -109,23 +133,33 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
 
     harps_rows = grouped_harps_data.get_group(cme_id)
 
-    if cme_id in dimmings_data.index:
-        dimming_rows = grouped_dimmings_data.get_group(cme_id)
-    else:
-        dimming_rows = []
-
-    if cme_id in flares_data.index:
-        flare_rows = grouped_flares_data.get_group(cme_id)
-    else:
-        flare_rows = []
-
-    if not ((len(dimming_rows) > 0) and (len(flare_rows) > 0)):
-        continue
-
     cme_time = harps_rows["CME_DATE"].to_list()[0]
     cme_pa = harps_rows["CME_PA"].to_list()[0]
     cme_width = harps_rows["CME_WIDTH"].to_list()[0]
     cme_halo = harps_rows["CME_HALO"].to_list()[0]
+
+    if cme_id in dimmings_data.index:
+        dimming_times = dimmings_data["start_time"].to_list()
+        time_mask = (
+            (dimming_times > cme_time - MAX_DIMMING_TIME_BEFORE_CME) &
+            (dimming_times < cme_time + MAX_DIMMING_TIME_AFTER_CME)
+        )
+        dimming_rows = dimmings_data[time_mask]
+    else:
+        dimming_rows = []
+
+    if cme_id in flares_data.index:
+        flare_times = flares_data["FLARE_DATA"].to_list()
+        time_mask = (
+            (flare_times > cme_time - MAX_FLARE_TIME_BEFORE_CME) &
+            (flare_times < cme_time + MAX_FLARE_TIME_AFTER_CME)
+        )
+        flare_rows = flares_data[time_mask]
+    else:
+        flare_rows = []
+
+    if ((len(dimming_rows) == 0) and (len(flare_rows) == 0)):
+        continue
 
     cme = CME(cme_time, cme_pa, cme_width, halo=cme_halo)
 
@@ -148,12 +182,12 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
 
     for idx, harps_data_row in harps_rows.iterrows():
 
-        harps_data_values = harps_data_row[["CME_DATE","HARPS_LON_MIN","HARPS_LAT_MIN","HARPS_LON_MAX","HARPS_LAT_MAX"]]
+        harps_data_values = harps_data_row[["CME_DATE","HARPS_LONDTMIN","HARPS_LATDTMIN","HARPS_LONDTMAX","HARPS_LATDTMAX"]]
 
         harpsnum = harps_data_row["HARPNUM"]
 
         harps = Harps(*harps_data_values)
-        rotated_harps = harps.rotate_bbox(cme_time)
+        rotated_harps = harps#.rotate_bbox(cme_time)
 
         plotted_harps_dict[harpsnum] = rotated_harps
 
@@ -186,11 +220,14 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
         ax.plot_coord(rotated_harps.get_centre_point().get_skycoord(), c="k", zorder=10, marker=".", markersize=1)
 
     if len(dimming_rows) > 0:
-        for dimming_id, dimming_data_rows in dimming_rows.groupby("DIMMING_ID"):
+        for dimming_id, dimming_data_rows in dimming_rows.groupby("dimming_id"):
             dimming_data_rows = dimming_data_rows.sort_values(by="MATCH", ascending=False)
 
             dimming_data = dimming_data_rows.iloc[0]
+
+            HARPNUM = dimming_data["HARPNUM"]
             matched_dimming = dimming_data["MATCH"] == 1
+            cme_dimming = 
 
             if matched_dimming:
                 color = "#28C0D7"
@@ -198,9 +235,9 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
                 color = "#D73F28"
 
             dimming = Dimming(
-                    date = dimming_data["DIMMING_TIME"],
-                    lon = dimming_data["DIMMING_LON"],
-                    lat = dimming_data["DIMMING_LAT"]
+                    date = dimming_data["start_time"],
+                    lon = dimming_data["longitude"],
+                    lat = dimming_data["latitude"]
                     )
 
             dimming_skycoord = dimming.point.rotate_coords(cme_time).get_skycoord()
@@ -228,7 +265,7 @@ for cme_id in tqdm(list(grouped_harps_data.groups.keys())):
 
     if len(flare_rows) > 1:
         for flare_id, flare_data_rows in flare_rows.groupby("FLARE_ID"):
-            flare_data_rows = flare_data_rows.sort_values(by="MATCH", ascending=False)
+            #flare_data_rows = flare_data_rows.sort_values(by="MATCH", ascending=False)
 
             flare_data = flare_data_rows.iloc[0]
             matched_flare = flare_data["MATCH"] == 1
