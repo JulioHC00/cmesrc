@@ -69,3 +69,6 @@ FLARES_MATCHED_TO_HARPS_PICKLE = os.path.join(INTERIM_DATA_DIR, "flares_matched_
 UPDATED_SWAN = os.path.join(INTERIM_DATA_DIR, "SWAN/")
 
 CMESRC_DB = os.path.join(PROCESSED_DATA_DIR, 'cmesrc.db')
+CMESRCV2_DB = os.path.join(PROCESSED_DATA_DIR, 'cmesrcV2.db')
+
+MAJUMDAR_CATALOGUE = os.path.join(INTERIM_DATA_DIR, "majumdar/CSR_catalogue.txt")
