@@ -100,10 +100,15 @@ def parse_lasco_cme_catalogue():
             three_points = n
         else:
             three_points = 0
+        
+        original_id = f"ID{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}"
+        pa_id = f"{int(processed_columns[2]):03}" if len(processed_columns[2]) > 0 else "999"
+
+        new_id = original_id + pa_id
 
         # Now we build the dictionary which is the row that is added to the DataFrame
         newRow = {
-                "CME_ID": f"ID{processed_columns[0].replace('/','')}{processed_columns[1].replace(':','')}",
+                "CME_ID": new_id,
                 "CME_DATE": f"{processed_columns[0].replace('/','-')} {processed_columns[1]}", # ISO
                 "CME_PA": processed_columns[2],
                 "CME_WIDTH": processed_columns[3],

@@ -68,9 +68,10 @@ def findAllMatchingRegions():
     first_cols = ["CME_ID", "CME_HARPNUM_ID", "CME_DATE", "HARPNUM"]
     temporal_matching_harps_database = temporal_matching_harps_database[first_cols + [col for col in columns if col not in first_cols]]
 
+    # NOT ANYMORE, SOLVED
     # Some CMEs have the exact same time but are supposedly different ones, this makes life hard because if they share a HARPS region then I will get duplicated IDs. I'll just remove duplicated.
 
-    temporal_matching_harps_database.drop_duplicates(subset=["CME_HARPNUM_ID"], inplace=True)
+    # temporal_matching_harps_database.drop_duplicates(subset=["CME_HARPNUM_ID"], inplace=True)
     temporal_matching_harps_database.to_csv(TEMPORAL_MATCHING_HARPS_DATABASE, index=False)
     temporal_matching_harps_database.to_pickle(TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
 
