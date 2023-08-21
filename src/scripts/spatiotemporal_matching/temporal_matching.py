@@ -12,6 +12,12 @@ from bisect import bisect_right
 import pandas as pd
 
 lasco_cme_database = pd.read_csv(LASCO_CME_DATABASE)
+
+# There are 2 pairs of CMEs with exact same date and PA with different widths. I honestly don't know how that's possible
+# I'm just going to remove them
+
+lasco_cme_database = lasco_cme_database[~lasco_cme_database.duplicated(subset=["CME_ID"], keep=False)]
+
 harps_lifetime_database = pd.read_csv(HARPS_LIFETIME_DATABSE)
 
 harps_lifetime_start_times = np.array([Time(harps_time) for harps_time in harps_lifetime_database["start"]])

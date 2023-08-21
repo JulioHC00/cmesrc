@@ -55,11 +55,11 @@ def setup():
         ALL_LATDTMAX.extend(list(LATDTMAX))
         ALL_RAW_HARPS_TIMES.extend(list(cme_closest_harps_time_indices))
 
-    final_database.at[harps_indices, "HARPS_RAW_LONDTMIN"] = ALL_LONDTMIN
-    final_database.at[harps_indices, "HARPS_RAW_LATDTMIN"] = ALL_LATDTMIN
-    final_database.at[harps_indices, "HARPS_RAW_LONDTMAX"] = ALL_LONDTMAX
-    final_database.at[harps_indices, "HARPS_RAW_LATDTMAX"] = ALL_LATDTMAX
-    final_database.at[harps_indices, "HARPS_RAW_DATE"] = ALL_RAW_HARPS_TIMES
+    final_database.loc[harps_indices, "HARPS_RAW_LONDTMIN"] = ALL_LONDTMIN
+    final_database.loc[harps_indices, "HARPS_RAW_LATDTMIN"] = ALL_LATDTMIN
+    final_database.loc[harps_indices, "HARPS_RAW_LONDTMAX"] = ALL_LONDTMAX
+    final_database.loc[harps_indices, "HARPS_RAW_LATDTMAX"] = ALL_LATDTMAX
+    final_database.loc[harps_indices, "HARPS_RAW_DATE"] = ALL_RAW_HARPS_TIMES
 
     final_database["HARPS_DATE"] = None
     final_database["HARPS_MIDPOINT"] = None

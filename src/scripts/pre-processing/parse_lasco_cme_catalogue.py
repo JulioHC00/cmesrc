@@ -1,5 +1,5 @@
 """
-Parses the .txt file of the LASCO CME catalogue into a .csv format
+Parses the .txt file of the LASCO CME catalogue into a .csv format. IDs are generated
 """
 
 from src.cmesrc.config import RAW_LASCO_CME_CATALOGUE, INTERIM_DATA_DIR, LASCO_CME_DATABASE
