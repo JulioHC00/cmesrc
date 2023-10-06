@@ -2,6 +2,7 @@ from astropy.time import Time
 from datetime import datetime, timedelta
 import astropy.units as u
 from bisect import bisect_left
+import sqlite3
 from tqdm import tqdm
 import numpy as np
 from os import walk, system, name
@@ -142,3 +143,21 @@ def cache_updated_swan_data() -> dict:
 
     clear_screen()
     return data_dict
+
+def read_sql_processed_bbox(harpnum: int, conn: sqlite3.Connection) -> pd.DataFrame:
+    df = pd.read_sql(
+        f"""
+        SELECT * FROM PROCESSED_HARPS_BBOX
+        WHERE harpnum = {harpnum}
+        """
+        , conn
+    )
+
+    timestamps = list(df["timestamp"].to_numpy())
+
+    df['timestamp'] = Time(timestamps, format="iso")
+    df['Timestamp'] = df['timestamp']
+
+    df.set_index("timestamp", drop=False, inplace=True)
+
+    return df

@@ -3,16 +3,20 @@ from astropy.time import Time
 from tqdm import tqdm
 from src.harps.harps import Harps
 from src.dimmings.dimmings import Dimming
-from src.cmesrc.utils import clear_screen, filepaths_updated_swan_data, get_closest_harps_timestamp, read_SWAN_filepath
+from src.cmesrc.utils import clear_screen, get_closest_harps_timestamp, read_sql_processed_bbox
 import numpy as np
 from src.cmesrc.config import (
     RAW_DIMMINGS_CATALOGUE, 
-    HARPS_LIFETIME_DATABSE, 
     DIMMINGS_MATCHED_TO_HARPS, 
-    DIMMINGS_MATCHED_TO_HARPS_PICKLE
+    DIMMINGS_MATCHED_TO_HARPS_PICKLE,
+    CMESRCV2_DB
     )
 
+import sqlite3
 from bisect import bisect_right
+
+conn = sqlite3.connect(CMESRCV2_DB)
+cur = conn.cursor()
 
 DEG_TO_RAD = np.pi / 180
 HALF_POINTS_DIST = 5 * DEG_TO_RAD
@@ -43,10 +47,14 @@ def gather_dimming_distances():
     # Read in HARPs lifetime catalogue
     ##################################
 
-    harps_lifetime_database = pd.read_csv(HARPS_LIFETIME_DATABSE)
+    harps_lifetime_database = pd.read_sql("""
+                                        SELECT * FROM HARPS
+                                        WHERE harpnum IN (SELECT DISTINCT harpnum FROM PROCESSED_HARPS_BBOX)
+                                        """, conn)
+
     harps_lifetime_start_times = pd.to_datetime(harps_lifetime_database["start"]).to_numpy()
     harps_lifetime_end_times = pd.to_datetime(harps_lifetime_database["end"]).to_numpy()
-    harpsnums = harps_lifetime_database["harpsnum"].to_numpy()
+    harpsnums = harps_lifetime_database["harpnum"].to_numpy()
 
     # We need to sort both start and end times because we will perform a binary
     # search But we also need to keep track of the original indices so we can 
@@ -104,8 +112,6 @@ def gather_dimming_distances():
     # This will be similar to the spatial matching of the CMEs, at least in the
     # beginning
 
-    SWAN_DATA = filepaths_updated_swan_data()
-
     clear_screen()
 
     print("===DIMMINGS===")
@@ -123,7 +129,7 @@ def gather_dimming_distances():
     ALL_RAW_HARPS_TIMES = []
 
     for harpnum, group in tqdm(grouped_by_harps, total=grouped_by_harps.ngroups):
-        harps_data = read_SWAN_filepath(SWAN_DATA[harpnum])
+        harps_data = read_sql_processed_bbox(harpnum, conn)
         harps_timestamps = harps_data["Timestamp"].to_numpy()
 
         dimming_times = group["max_detection_time"].to_numpy()
@@ -153,7 +159,6 @@ def gather_dimming_distances():
     dimmings_harps_df.at[harps_indices, "HARPS_RAW_LATDTMAX"] = ALL_LATDTMAX
     dimmings_harps_df.at[harps_indices, "HARPS_RAW_DATE"] = ALL_RAW_HARPS_TIMES
 
-    del SWAN_DATA
 
     ##########################################################################
 

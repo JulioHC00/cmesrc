@@ -1,8 +1,8 @@
 """
 Match temporally co-occurent HARPS regions to CMEs
 """
-from src.cmesrc.config import TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, MAIN_DATABASE, MAIN_DATABASE_PICKLE
-from src.cmesrc.utils import get_closest_harps_timestamp, filepaths_updated_swan_data, clear_screen, read_SWAN_filepath
+from src.cmesrc.config import TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE, SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, MAIN_DATABASE, MAIN_DATABASE_PICKLE, CMESRCV2_DB
+from src.cmesrc.utils import get_closest_harps_timestamp, clear_screen, read_sql_processed_bbox
 from src.cmes.cmes import CME
 from src.harps.harps import Harps
 import numpy as np
@@ -10,6 +10,14 @@ from tqdm import tqdm
 import pandas as pd
 import multiprocessing as mp
 import astropy.units as u
+import sqlite3
+
+conn = sqlite3.connect(CMESRCV2_DB)
+cur = conn.cursor()
+
+# Let's create an index in case it doesn't exist to make things faster
+
+cur.execute("CREATE INDEX IF NOT EXISTS idx_processed_harps_bbox_harpnum ON PROCESSED_HARPS_BBOX (HARPNUM);")
 
 EXTRA_CME_WIDTH = 10
 HALO_MAX_SUN_CENTRE_DIST = 1
@@ -17,8 +25,6 @@ HALO_MAX_SUN_CENTRE_DIST = 1
 rows = []
 
 def setup():
-    SWAN_DATA = filepaths_updated_swan_data()
-
     temporal_matching_harps = pd.read_pickle(TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE)
     temporal_matching_harps.set_index("CME_HARPNUM_ID", inplace=True, drop=False)
     temporal_matching_harps = temporal_matching_harps.sort_values(by="HARPNUM")
@@ -34,7 +40,7 @@ def setup():
     print("\n===Finding Spatially Matching Harps.===\n")
     print("\n=Finding Closest Harps Positions=\n")
     for harpnum, group in tqdm(grouped_matching_harps):
-        harps_data = read_SWAN_filepath(SWAN_DATA[harpnum])
+        harps_data = read_sql_processed_bbox(harpnum, conn)
         cme_times = group["CME_DATE"].to_numpy()
         harps_timestamps = harps_data["Timestamp"].to_numpy()
         if harps_indices is None:
@@ -72,7 +78,6 @@ def setup():
     final_database["HARPS_LONDTMAX"] = None
     final_database["HARPS_LATDTMAX"] = None
 
-    del SWAN_DATA
     return final_database
 
 def findSpatialCoOcurrentHarps(cme_ids):

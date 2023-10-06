@@ -256,9 +256,15 @@ class BoundingBox():
                 )
 
     def is_point_inside(self, point: Point):
+        # Check difference in dates is larger than 1 hours
+        if abs((self.DATE - point.DATE).to_value("hour")) > 1:
+            bbox_coords = self.rotate_bbox(point.DATE).get_raw_bbox()
+        else:
+            bbox_coords = self.get_raw_bbox()
+
         if (
-                ((self.LOWER_LEFT.LON < point.LON) & (self.LOWER_LEFT.LAT < point.LAT)) & 
-                ((self.UPPER_RIGHT.LON > point.LON) & (self.UPPER_RIGHT.LAT > point.LAT))
+                (bbox_coords[0][0] <= point.LON <= bbox_coords[1][0]) and
+                (bbox_coords[0][1] <= point.LAT <= bbox_coords[1][1])
                 ):
             return True
         else:
@@ -313,7 +319,12 @@ class BoundingBox():
         if self.is_point_inside(point):
             return [0,0]
 
-        bbox_coords = self.rotate_bbox(point.DATE).get_raw_bbox()
+        # Check difference in dates is larger than 1 hours
+        if abs((self.DATE - point.DATE).to_value("hour")) > 1:
+            bbox_coords = self.rotate_bbox(point.DATE).get_raw_bbox()
+        else:
+            bbox_coords = self.get_raw_bbox()
+
         point_coords = point.get_raw_coords()
 
         if point_coords[0] < bbox_coords[0][0]:

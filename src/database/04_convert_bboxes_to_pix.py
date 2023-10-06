@@ -10,7 +10,7 @@ import numpy as np
 from queue import Empty as QueueEmpty
 import pickle
 
-from src.cmesrc.config import CMESRC_DB, SDOML_TIMESTAMP_INFO
+from src.cmesrc.config import CMESRCV3_DB, SDOML_TIMESTAMP_INFO
 
 #########################################################
 #########################################################
@@ -24,19 +24,19 @@ with open(SDOML_TIMESTAMP_INFO, "rb") as f:
     sdoml_timestamp_info = pickle.load(f)
 
 
-con = sqlite3.connect(CMESRC_DB, timeout=1)
+con = sqlite3.connect(CMESRCV3_DB, timeout=1)
 con.execute("PRAGMA foreign_keys = ON")
 cur = con.cursor()
 
-cur.execute("SELECT COUNT(*) FROM harps_bbox LIMIT 1;")
+cur.execute("SELECT COUNT(*) FROM HARPS_BBOX LIMIT 1;")
 
 no_join_length = cur.fetchone()[0]
 
 cur.execute("""
-SELECT COUNT(*) FROM harps_bbox hb
-LEFT OUTER JOIN harps_pixel_bbox hpb
-ON hb.harpnum = hpb.harpnum AND hb.timestamp = hpb.timestamp
-WHERE hpb.harpnum IS NULL AND hpb.timestamp IS NULL LIMIT 1;""")
+SELECT COUNT(*) FROM HARPS_BBOX HB 
+LEFT OUTER JOIN HARPS_PIXEL_BBOX HPB
+ON HB.harpnum = HPB.harpnum AND HB.timestamp = HPB.timestamp
+WHERE HPB.harpnum IS NULL AND HPB.timestamp IS NULL LIMIT 1;""")
 total_length = cur.fetchone()[0]
 
 con.close()
@@ -45,18 +45,18 @@ con.close()
 def calculate_pixel_values(offset, length, pid, queue):
     pbar = tqdm(total=length)
 
-    con = sqlite3.connect("cmesrc.db", timeout=1)
+    con = sqlite3.connect(CMESRCV3_DB, timeout=1)
     con.execute("PRAGMA foreign_keys = ON")
 
     cursor = con.cursor()
 
     cursor.execute(f"""
-    SELECT hb.harpnum, hb.timestamp, hb.londtmin, hb.londtmax, hb.latdtmin, hb.latdtmax
-    FROM harps_bbox hb
+    SELECT HB.harpnum, HB.timestamp, HB.londtmin, HB.londtmax, HB.latdtmin, HB.latdtmax
+    FROM HARPS_BBOX hb
     LEFT OUTER JOIN harps_pixel_bbox hpb
-    ON hb.harpnum = hpb.harpnum AND hb.timestamp = hpb.timestamp
+    ON HB.harpnum = hpb.harpnum AND HB.timestamp = hpb.timestamp
     WHERE hpb.harpnum IS NULL AND hpb.timestamp IS NULL
-    ORDER BY hb.harpnum, hb.timestamp LIMIT {length} OFFSET {offset};""")
+    ORDER BY HB.harpnum, HB.timestamp LIMIT {length} OFFSET {offset};""")
 
 #    row = cursor.fetchone()
     rows = cursor.fetchall()

@@ -3,13 +3,17 @@ Will match CMEs with HARPS regions that were present on-disk at the time of the 
 HERE THE LASCO CME DATABASE IS MASKED TO ONLY CMES WITHOUT POOR OR VERY POOR DESCRIPTIONS AND NO N POINTS WARNINGS
 """
 
-from src.cmesrc.config import LASCO_CME_DATABASE, HARPS_LIFETIME_DATABSE, TEMPORAL_MATCHING_HARPS_DATABASE, TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE
+from src.cmesrc.config import LASCO_CME_DATABASE, TEMPORAL_MATCHING_HARPS_DATABASE, TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, CMESRCV2_DB
 from src.cmesrc.utils import clear_screen
 import numpy as np
 from tqdm import tqdm
 from astropy.time import Time
 from bisect import bisect_right
 import pandas as pd
+import sqlite3
+
+conn = sqlite3.connect(CMESRCV2_DB)
+cur = conn.cursor()
 
 lasco_cme_database = pd.read_csv(LASCO_CME_DATABASE)
 
@@ -18,18 +22,22 @@ lasco_cme_database = pd.read_csv(LASCO_CME_DATABASE)
 
 lasco_cme_database = lasco_cme_database[~lasco_cme_database.duplicated(subset=["CME_ID"], keep=False)]
 
-harps_lifetime_database = pd.read_csv(HARPS_LIFETIME_DATABSE)
+harps_lifetime_database = pd.read_sql("""
+                                      SELECT * FROM HARPS
+                                      WHERE harpnum IN (SELECT DISTINCT harpnum FROM PROCESSED_HARPS_BBOX)
+                                      """, conn)
 
 harps_lifetime_start_times = np.array([Time(harps_time) for harps_time in harps_lifetime_database["start"]])
 harps_lifetime_end_times = np.array([Time(harps_time) for harps_time in harps_lifetime_database["end"]])
 lasco_cme_database["CME_DATE"] = np.array([Time(cme_time) for cme_time in lasco_cme_database["CME_DATE"]]) # Parse dates
 cme_detection_times = lasco_cme_database["CME_DATE"].to_numpy()
 
-harpsnums = harps_lifetime_database["harpsnum"].to_numpy()
+harpsnums = harps_lifetime_database["harpnum"].to_numpy()
 
 FIRST_AVAILABLE_HARPS = min(harps_lifetime_start_times)
+LAST_AVAILABLE_HARPS = max(harps_lifetime_end_times)
  
-CME_TIME_MASK = cme_detection_times > FIRST_AVAILABLE_HARPS
+CME_TIME_MASK = np.array(cme_detection_times >= FIRST_AVAILABLE_HARPS) & np.array((cme_detection_times <= LAST_AVAILABLE_HARPS))
 CME_QUALITY_MASK = (lasco_cme_database["CME_QUALITY"] == 0)# & (lasco_cme_database["CME_THREE_POINTS"] == 0) # CMEs withou poor or very poor flags and without few points warning.
 CME_FULL_MASK = CME_TIME_MASK & CME_QUALITY_MASK
 
