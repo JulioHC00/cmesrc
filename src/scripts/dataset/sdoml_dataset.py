@@ -413,6 +413,32 @@ SIC.img_count = 24 OR
 
 conn.commit()
 
+# Now, given the real timestamp of the last image we must adjust the labels
+
+print("Adjusting labels")
+
+conn.executescript("""
+CREATE INDEX IF NOT EXISTS idx_sdoml_dataset_cme_id ON SDOML_DATASET (cme_id);
+
+CREATE TEMP TABLE temp_sdoml_dataset AS
+SELECT slice_id, (strftime("%s", C.cme_date) - strftime("%s", SD.end_image)) / 3600.0 AS cme_diff FROM SDOML_DATASET SD
+INNER JOIN CMES C
+ON C.cme_id = SD.cme_id
+WHERE SD.cme_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_temp_sdoml_dataset_slice_id ON temp_sdoml_dataset (slice_id);
+
+-- Now update the cme_diff
+UPDATE SDOML_DATASET
+SET cme_diff = (
+SELECT cme_diff FROM temp_sdoml_dataset
+WHERE SDOML_DATASET.slice_id = temp_sdoml_dataset.slice_id
+)
+WHERE cme_id IS NOT NULL;
+""")
+
+conn.commit()
+
 # Print some info
 
 cur.execute("""
@@ -683,7 +709,8 @@ SELECT group_id, n_level_1, n_level_2, n_level_3, n_level_4, n_level_5, group_si
 df.set_index('group_id', inplace=True)
 
 # Initialize splits
-splits = {i: {'group_ids': [], 'totals': {col: 0 for col in df.columns if col != 'group_id'}} for i in range(1, 6)}
+N_SPLITS = 10
+splits = {i: {'group_ids': [], 'totals': {col: 0 for col in df.columns if col != 'group_id'}} for i in range(1, N_SPLITS + 1)}
 
 # Sort by each n_level_x column in descending order. We sort first level1, level2 ... until at the end group_size
 df.sort_values(by=[col for col in df.columns if col != 'group_id'], ascending=False, inplace=True)
@@ -727,7 +754,9 @@ for attribute in attributes:
         df.drop(group_id, inplace=True)
         used_groups.add(group_id)
 
-# Now add to SDOML_GROUPS table
+# Now, we did 10 splits because we want 5 splits, each divided into two
+# So there will be a split and then a subsplit
+# So we need to map every two subsplits to the same split
 
 try:
     cur.execute("ALTER TABLE SDOML_GROUPS ADD COLUMN split INTEGER;")
@@ -736,43 +765,81 @@ except sqlite3.OperationalError as e:
         pass
     else:
         raise e
+        
+try:
+    cur.execute("ALTER TABLE SDOML_GROUPS ADD COLUMN subsplit INTEGER;")
+except sqlite3.OperationalError as e:
+    if "duplicate column name: subsplit" == str(e):
+        pass
+    else:
+        raise e
     
 for split, split_dict in splits.items():
     group_ids = split_dict['group_ids']
-    cur.executemany("UPDATE SDOML_GROUPS SET split = ? WHERE group_id = ?", [(split, group_id) for group_id in group_ids])
+    subsplit_number = split % 2 + 1
+    split_number = (split + 1) // 2
+    cur.executemany("UPDATE SDOML_GROUPS SET split = ?, subsplit = ? WHERE group_id = ?", [(split_number, subsplit_number, group_id) for group_id in group_ids])
 
 conn.commit()
 
 # Print slices info
-
 df = pd.read_sql("""
-SELECT SH.*, SG.split, MAX(SCHA.verification_score) AS max_score FROM SDOML_HARPS SH
-INNER JOIN SDOML_GROUPS SG ON SH.group_id = SG.group_id
-LEFT JOIN SDOML_CME_HARPS_ASSOCIATIONS SCHA ON SH.harpnum = SCHA.harpnum
-GROUP BY SH.harpnum
-                 """, conn)
-
-df["has_cme"] = df["max_score"].notnull().astype(int)
-
-split_counts = df.groupby(["split", "has_cme"]).size().reset_index(name="counts")
-
-pivot_df = split_counts.pivot(index='split', columns='has_cme', values='counts').fillna(0).reset_index()
-
-
-print("Number of harps in each split, with and without CMEs")
-print(pivot_df)
-
-# Count number of rows per split too
-
-df = pd.read_sql("""
-SELECT SD.*, SG.split FROM SDOML_DATASET SD
-INNER JOIN SDOML_HARPS SH ON SD.harpnum = SH.harpnum
-INNER JOIN SDOML_GROUPS SG ON SH.group_id = SG.group_id
+SELECT * FROM SDOML_DATASET
+INNER JOIN SDOML_HARPS ON SDOML_DATASET.harpnum = SDOML_HARPS.harpnum
+INNER JOIN SDOML_GROUPS ON SDOML_HARPS.group_id = SDOML_GROUPS.group_id
 """, conn)
 
-split_counts = df.groupby(["split", "label"]).size().reset_index(name="counts")
+nrows = df.groupby(['split', 'subsplit', 'label']).size().reset_index(name='counts')
 
-pivot_df = split_counts.pivot(index='split', columns='label', values='counts').fillna(0).reset_index()
+n_rows_pivot = pd.pivot_table(nrows, values='counts', index=['split','subsplit'], columns=['label'], aggfunc=np.sum)
 
-print("Number of rows in each split, positive and negative")
-print(pivot_df)
+# Print in markdown
+print("N Positive and negative rows")
+print(n_rows_pivot.to_markdown())
+
+# Rename the columns to neg_row and pos_row
+
+n_rows_pivot.rename(columns={0: "neg_row", 1: "pos_row"}, inplace=True)
+
+# Now the number of CMEs per split by verification level
+
+ncmes = df[df["label"].astype(bool)].drop_duplicates(subset=['cme_id']).groupby(['split', 'subsplit', 'verification_level']).size().reset_index(name='counts')
+
+ncmes_pivot = pd.pivot_table(ncmes, values='counts', index=['split', 'subsplit'], columns=['verification_level'], aggfunc=np.sum)
+
+# To markdown
+print("N cmes by verif level per split")
+print(ncmes_pivot.to_markdown())
+
+# Rename columns to n_cme_level_x
+
+ncmes_pivot.rename(columns={1: "n_cme_level_1", 2: "n_cme_level_2", 3: "n_cme_level_3", 4: "n_cme_level_4", 5: "n_cme_level_5"}, inplace=True)
+
+# Now number of cme productive and non cme productive regions per split
+
+nreg = df.sort_values(by="label", ascending=False).drop_duplicates(subset=['harpnum'], keep="first").groupby(['split', 'subsplit', 'label']).size().reset_index(name='counts')
+
+nreg_pivot = pd.pivot_table(nreg, values='counts', index=['split', 'subsplit'], columns=['label'], aggfunc=np.sum)
+
+# To markdown
+
+print("N regions per subsplit with and without CME")
+print(nreg_pivot.to_markdown())
+
+# Rename columns to pos_reg and neg_reg
+
+nreg_pivot.rename(columns={0: "neg_reg", 1: "pos_reg"}, inplace=True)
+
+# Now combine all pivots, which should share the same index
+combined_pivot = pd.concat([n_rows_pivot, ncmes_pivot, nreg_pivot], axis=1)
+
+
+# And save this for analysis
+combined_pivot.to_csv("/home/julio/Downloads/pivots.csv")
+
+# Print combined_pivot to markdown
+
+print("Combined pivot")
+print(combined_pivot.to_markdown())
+
+conn.close()
