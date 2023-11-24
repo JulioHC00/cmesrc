@@ -94,3 +94,11 @@ target/
 
 # Figures overviews
 reports/figures/overviews/
+notebooks/figures/bboxes/lat_outliers
+notebooks/figures/bboxes/lon_outliers
+notebooks/figures/bboxes/suspicious
+notebooks/figures/bboxes
+notebooks/majumdar_figures
+notebooks/notebook_09_files
+notebooks/notebook_10_files
+notebooks/output_movies
