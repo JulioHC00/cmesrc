@@ -1,6 +1,7 @@
 import sys
 
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 import subprocess
 import sqlite3
@@ -12,11 +13,22 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 import bisect
 
-from src.cmesrc.config import CMESRCV2_DB, CMESRCV3_DB, HARPNUM_TO_NOAA, LASCO_CME_DATABASE, SDOML_TIMESTAMP_INFO,SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE, DIMMINGS_MATCHED_TO_HARPS_PICKLE, FLARES_MATCHED_TO_HARPS_PICKLE
+from src.cmesrc.config import (
+    CMESRCV2_DB,
+    CMESRCV3_DB,
+    HARPNUM_TO_NOAA,
+    LASCO_CME_DATABASE,
+    SDOML_TIMESTAMP_INFO,
+    SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE,
+    DIMMINGS_MATCHED_TO_HARPS_PICKLE,
+    FLARES_MATCHED_TO_HARPS_PICKLE,
+)
 from src.cmesrc.utils import read_SWAN_filepath, filepaths_updated_swan_data
 
+
 def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+    os.system("cls" if os.name == "nt" else "clear")
+
 
 FORCE = True
 RERUN_CATALOGUE_SCRIPTS = False
@@ -36,7 +48,8 @@ if os.path.exists(CMESRCV3_DB):
 new_conn = sqlite3.connect(CMESRCV3_DB)
 new_cur = new_conn.cursor()
 
-new_cur.executescript("""
+new_cur.executescript(
+    """
 CREATE TABLE HARPS (
   harpnum INTEGER PRIMARY KEY,                    -- Unique identifier for each HARP region
   start TEXT NOT NULL, -- Start timestamp of the HARP region
@@ -187,7 +200,12 @@ CREATE TABLE NOAA_HARPNUM_MAPPING (
 CREATE TABLE NOAAS (
     noaa INTEGER PRIMARY KEY
 );
-""")
+CREATE TABLE IF NOT EXISTS HARPS_KEYWORDS (
+        harpnum INTEGER REFERENCES HARPS (harpnum),
+        timestamp TEXT
+    );
+"""
+)
 
 new_conn.commit()
 
@@ -195,35 +213,89 @@ new_conn.commit()
 
 swan_filepaths = filepaths_updated_swan_data()
 new_cur.execute("DELETE FROM RAW_HARPS_BBOX;")
+new_cur.execute("DELETE FROM HARPS_KEYWORDS;")
+
+KEYWORDS = ["TOTUSJH", "TOTUSJZ", "USFLUX"]
+
+for keyword in KEYWORDS:
+    try:
+        new_cur.execute(
+            """ALTER TABLE HARPS_KEYWORDS ADD COLUMN {} REAL;""".format(keyword)
+        )
+    except sqlite3.OperationalError as e:
+        if f"duplicate column name: {keyword}" in str(e):
+            pass
+        else:
+            raise e
 
 # tqdm should clear after finishing
-for harpnum in tqdm(swan_filepaths.keys(), desc="Reading SWAN data", unit="HARP", leave=False):
+for harpnum in tqdm(
+    swan_filepaths.keys(), desc="Reading SWAN data", unit="HARP", leave=False
+):
     filepath = swan_filepaths[harpnum]
     data = read_SWAN_filepath(filepath)
     # Replace the NaN values with 0
     data["IS_TMFI"] = data["IS_TMFI"].fillna(0)
-    data = [(int(harpnum), str(row["Timestamp"])[:-4], float(row["LONDTMIN"]), float(row["LONDTMAX"]), float(row["LATDTMIN"]), float(row["LATDTMAX"]), int(row["IRBB"]), int(row["IS_TMFI"])) for i, row in data.iterrows()]
+    bbox_data = [
+        (
+            int(harpnum),
+            str(row["Timestamp"])[:-4],
+            float(row["LONDTMIN"]),
+            float(row["LONDTMAX"]),
+            float(row["LATDTMIN"]),
+            float(row["LATDTMAX"]),
+            int(row["IRBB"]),
+            int(row["IS_TMFI"]),
+        )
+        for i, row in data.iterrows()
+    ]
+
+    keywords = [
+        (
+            int(harpnum),
+            str(row["Timestamp"])[:-4],
+            *[float(row[keyword]) for keyword in KEYWORDS],
+        )
+        for i, row in data.iterrows()
+    ]
 
     # Insert the data into the database RAW_HARPS_BBOX table
-    new_cur.executemany("""
+    new_cur.executemany(
+        """
     INSERT INTO RAW_HARPS_BBOX (harpnum, timestamp, LONDTMIN, LONDTMAX, LATDTMIN, LATDTMAX, IRBB, IS_TMFI)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-    """, data)
+    """,
+        bbox_data,
+    )
+
+    new_cur.executemany(
+        f"""
+        INSERT INTO HARPS_KEYWORDS (harpnum, timestamp, {','.join(KEYWORDS)})
+        VALUES ({','.join(['?'] * (len(KEYWORDS) + 2))});
+        """,
+        keywords,
+    )
+
 new_conn.commit()
 
 new_cur.execute("DELETE FROM HARPS;")
-new_cur.execute("SELECT harpnum, min(timestamp) as start, max(timestamp) as end FROM RAW_HARPS_BBOX GROUP BY harpnum;")
+new_cur.execute(
+    "SELECT harpnum, min(timestamp) as start, max(timestamp) as end FROM RAW_HARPS_BBOX GROUP BY harpnum;"
+)
 
 data = new_cur.fetchall()
 
 data = [(int(row[0]), str(row[1]), str(row[2])) for row in data]
 
 for row in data:
-    new_cur.execute("""
+    new_cur.execute(
+        """
     INSERT INTO HARPS (harpnum, start, end)
     VALUES (?, ?, ?);
-    """, row)
-        
+    """,
+        row,
+    )
+
 new_conn.commit()
 
 # Now read HARPs-NOAA mapping
@@ -233,8 +305,10 @@ new_cur.execute("DELETE FROM NOAAS;")
 
 noaatoharp = pd.read_csv(HARPNUM_TO_NOAA, sep=" ", header=0)
 
+
 def parse_noaa_lists(noaa_list):
     return [int(noaa) for noaa in noaa_list.split(",")]
+
 
 noaatoharp["noaa_list"] = noaatoharp["NOAA_ARS"].apply(parse_noaa_lists)
 
@@ -243,25 +317,31 @@ for _, row in noaatoharp.iterrows():
         if int(row["HARPNUM"]) > 7331.5:
             continue
         try:
-            new_cur.execute("""
+            new_cur.execute(
+                """
                 INSERT INTO NOAA_HARPNUM_MAPPING (noaa, harpnum)
                 VALUES (?, ?)
-            """, (int(noaa), int(row["HARPNUM"])))
+            """,
+                (int(noaa), int(row["HARPNUM"])),
+            )
         except sqlite3.IntegrityError as e:
             print(f"Integrity error for {noaa}, {row['HARPNUM']}")
 
-new_cur.execute("""
+new_cur.execute(
+    """
 INSERT INTO NOAAS (noaa)
 SELECT DISTINCT noaa
 FROM NOAA_HARPNUM_MAPPING
-""")
+"""
+)
 
 # Now we get to calculating areas and overlaps
 
 clear_screen()
 print("Step 2 of {}: Calculating areas and overlaps".format(N_STEPS))
 
-new_cur.execute("""
+new_cur.execute(
+    """
 WITH AREAS AS (
                 SELECT harpnum,
                 COALESCE(AVG(NULLIF(100.0 * ((PI()/180.0 * (LONDTMAX - LONDTMIN) * ABS(SIN(PI()/180.0 * LATDTMAX) - SIN(PI()/180.0 * LATDTMIN))) / (2.0 * PI())), 0)),0) AS area
@@ -270,14 +350,17 @@ WITH AREAS AS (
                 )
 UPDATE HARPS
 SET area = (SELECT area FROM AREAS WHERE AREAS.harpnum = HARPS.harpnum);
-                """)
+                """
+)
 
-new_cur.execute("""
+new_cur.execute(
+    """
 UPDATE HARPS
 SET n_noaas = (SELECT COUNT(noaa)
                FROM NOAA_HARPNUM_MAPPING
                WHERE NOAA_HARPNUM_MAPPING.harpnum = HARPS.harpnum)
-    """)
+    """
+)
 
 
 new_conn.commit()
@@ -289,51 +372,66 @@ new_cur.execute("CREATE INDEX IF NOT EXISTS idx_harps_area ON HARPS (area);")
 new_cur.execute("CREATE INDEX IF NOT EXISTS idx_harps_harpnum ON HARPS (area);")
 
 new_cur.execute("DROP TABLE IF EXISTS NO_BIG_HARPS;")
-new_cur.execute("""
+new_cur.execute(
+    """
 CREATE TEMPORARY TABLE NO_BIG_HARPS AS
                 SELECT RHB.* FROM RAW_HARPS_BBOX RHB
                 INNER JOIN HARPS H ON RHB.harpnum = H.harpnum
                 WHERE H.area < 18
-                """)
-    
+                """
+)
+
 # 2. We trim the bounding boxes that extend beyond the limb
 
-new_cur.execute("CREATE INDEX IF NOT EXISTS idx_no_big_harps_harpnum ON NO_BIG_HARPS (LONDTMIN);")
-new_cur.execute("CREATE INDEX IF NOT EXISTS idx_no_big_harps_harpnum ON NO_BIG_HARPS (LONDTMAX);")
+new_cur.execute(
+    "CREATE INDEX IF NOT EXISTS idx_no_big_harps_harpnum ON NO_BIG_HARPS (LONDTMIN);"
+)
+new_cur.execute(
+    "CREATE INDEX IF NOT EXISTS idx_no_big_harps_harpnum ON NO_BIG_HARPS (LONDTMAX);"
+)
 
 new_cur.execute("DROP TABLE IF EXISTS TRIMMED_HARPS_BBOX;")
-new_cur.execute("""
+new_cur.execute(
+    """
 CREATE TEMPORARY TABLE TRIMMED_HARPS_BBOX AS
 SELECT NBH.* FROM NO_BIG_HARPS NBH
-""")
+"""
+)
 
 # Now whenever LONDTMIN < -90 we set it to -90
 # Whenever LONDTMAX > 90 we set it to 90
 # And if LONTMIN<-90 AND LONDTMIN < -90 we drop that row
 # And if LONTMIN>90 AND LONDTMIN > -90 we drop that row
 
-new_cur.execute("""
+new_cur.execute(
+    """
 DELETE FROM TRIMMED_HARPS_BBOX
 WHERE (LONDTMIN < -90 AND LONDTMAX < -90)
 OR (LONDTMIN > 90 AND LONDTMAX > 90)
-""")
+"""
+)
 
-new_cur.execute("""
+new_cur.execute(
+    """
 UPDATE TRIMMED_HARPS_BBOX
 SET LONDTMIN = -90
 WHERE LONDTMIN < -90
-""")
+"""
+)
 
-new_cur.execute("""
+new_cur.execute(
+    """
 UPDATE TRIMMED_HARPS_BBOX
 SET LONDTMAX = 90
 WHERE LONDTMAX > 90
-""")
+"""
+)
 
 # 3. Now we need to calculate the actual overlaps
 
 print("Calculating overlaps...")
-new_cur.executescript("""
+new_cur.executescript(
+    """
 -- Create an index on HARPS_BBOX for the join in the temp_overlap creation step
 CREATE INDEX IF NOT EXISTS idx_thbb_harpnum_timestamp ON TRIMMED_HARPS_BBOX(harpnum, timestamp);
 
@@ -372,17 +470,24 @@ CREATE TABLE OVERLAPS AS
     FROM avg_overlap ao
     INNER JOIN TEMP_OVERLAP tpo ON ao.harpnum_a = tpo.harpnum1 AND ao.harpnum_b = tpo.harpnum2
     GROUP BY harpnum_a, harpnum_b;
-""")
+"""
+)
 
 new_conn.commit()
 
-overlaps = pd.read_sql_query("""
+overlaps = pd.read_sql_query(
+    """
                              SELECT O.*, H1.area as harpnum_a_area, H2.area as harpnum_b_area, H2.area / H1.area as b_over_a_area_ratio FROM OVERLAPS O
                              INNER JOIN HARPS H1 ON O.harpnum_a = H1.harpnum
                              INNER JOIN HARPS H2 ON O.harpnum_b = H2.harpnum
-                             """, new_conn)
+                             """,
+    new_conn,
+)
 
-bad_overlaps = overlaps[((overlaps["mean_overlap"] > 50) & (overlaps["ocurrence_percentage"] > 50)) | (overlaps["mean_overlap"] == 100)]
+bad_overlaps = overlaps[
+    ((overlaps["mean_overlap"] > 50) & (overlaps["ocurrence_percentage"] > 50))
+    | (overlaps["mean_overlap"] == 100)
+]
 
 for index, row in bad_overlaps.iterrows():
     occurence_percentage = row["ocurrence_percentage"]
@@ -396,15 +501,29 @@ for index, row in bad_overlaps.iterrows():
         decision = "MERGED A WITH B"
     else:
         decision = "DELETED A IN FAVOR OF B"
-    
-    new_cur.execute("INSERT OR IGNORE INTO OVERLAP_RECORDS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (harpnum_a, harpnum_b, decision, mean_overlap, row["std_overlap"], occurence_percentage, harpnum_a_area, harpnum_b_area, row["b_over_a_area_ratio"]))
+
+    new_cur.execute(
+        "INSERT OR IGNORE INTO OVERLAP_RECORDS VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            harpnum_a,
+            harpnum_b,
+            decision,
+            mean_overlap,
+            row["std_overlap"],
+            occurence_percentage,
+            harpnum_a_area,
+            harpnum_b_area,
+            row["b_over_a_area_ratio"],
+        ),
+    )
 
 new_conn.commit()
 
 print("Creating processed_harps_bbox table...")
 # Now fill processed_harps_bbox
 
-new_cur.executescript("""
+new_cur.executescript(
+    """
 DROP TABLE IF EXISTS PROCESSED_HARPS_BBOX;
 
 CREATE TABLE PROCESSED_HARPS_BBOX AS
@@ -424,7 +543,8 @@ WHERE LONDTMIN < -90;
 UPDATE PROCESSED_HARPS_BBOX
 SET LONDTMAX = 90
 WHERE LONDTMAX > 90;
-""")
+"""
+)
 
 new_conn.commit()
 
@@ -485,8 +605,8 @@ for i, row in no_duplicates.drop_duplicates(subset=["CME_ID"], keep="first").ite
             row["CME_HALO"],
             row["CME_SEEN_IN"],
             row["CME_QUALITY"],
-            row["CME_THREE_POINTS"]
-        )
+            row["CME_THREE_POINTS"],
+        ),
     )
 
 # Spatially consistent CME-HARP associations
@@ -500,10 +620,13 @@ for cme_id, harpnum in df[["CME_ID", "HARPNUM"]].values:
 
     # Add the match to CMES_HARPS_SPATIALLY_CONSIST
 
-    new_cur.execute("""
+    new_cur.execute(
+        """
                 INSERT INTO CMES_HARPS_SPATIALLY_CONSIST (harpnum, cme_id)
                 VALUES (?, ?)
-                """, (harpnum, cme_id))
+                """,
+        (harpnum, cme_id),
+    )
 
 new_conn.commit()
 
@@ -525,8 +648,8 @@ for i, row in dimmings[dimmings["MATCH"]].iterrows():
             row["start_time"].split(".")[0],
             row["max_detection_time"].iso[:-4],
             row["longitude"],
-            row["latitude"]
-        )
+            row["latitude"],
+        ),
     )
 
 new_conn.commit()
@@ -550,8 +673,8 @@ for i, row in flares.iterrows():
             row["FLARE_CLASS"],
             row["FLARE_AR"],
             row["FLARE_AR_SOURCE"],
-            row["FLARE_VERIFICATION"]
-        )
+            row["FLARE_VERIFICATION"],
+        ),
     )
 
 new_conn.commit()
@@ -564,6 +687,8 @@ new_conn.commit()
 # SHARPs timestamps
 
 print("Calculating closest timestamps for dimmings, flares and CMEs...")
+
+
 def closest_timestamp(target, sorted_timestamps):
     index = bisect.bisect_left(sorted_timestamps, target)
     if index == 0:
@@ -573,9 +698,10 @@ def closest_timestamp(target, sorted_timestamps):
     before = sorted_timestamps[index - 1]
     after = sorted_timestamps[index]
     if after - target < target - before:
-       return after
+        return after
     else:
-       return before
+        return before
+
 
 def formatted_timestamp(timestamp):
     """
@@ -601,7 +727,9 @@ def formatted_timestamp(timestamp):
         for minute in minutes
     ]
 
-    candidate_timestamps.append(datetime_timestamp.replace(minute=0).replace(second=0) + timedelta(hours=1))
+    candidate_timestamps.append(
+        datetime_timestamp.replace(minute=0).replace(second=0) + timedelta(hours=1)
+    )
 
     # Sort them
 
@@ -615,22 +743,33 @@ def formatted_timestamp(timestamp):
 
 
 # Dimmings
-for row in tqdm(new_cur.execute("SELECT dimming_id, dimming_start_date FROM dimmings").fetchall()):
+for row in tqdm(
+    new_cur.execute("SELECT dimming_id, dimming_start_date FROM dimmings").fetchall()
+):
     dimming_timestamp = datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S")
     image_timestamp = formatted_timestamp(dimming_timestamp)
-    new_cur.execute("UPDATE dimmings SET image_timestamp = ? WHERE dimming_id = ?", (image_timestamp.strftime("%Y-%m-%d %H:%M:%S"), row[0]))
+    new_cur.execute(
+        "UPDATE dimmings SET image_timestamp = ? WHERE dimming_id = ?",
+        (image_timestamp.strftime("%Y-%m-%d %H:%M:%S"), row[0]),
+    )
 
 # Same for flares
 for row in tqdm(new_cur.execute("SELECT flare_id, flare_date FROM flares").fetchall()):
     flare_timestamp = datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S")
     image_timestamp = formatted_timestamp(flare_timestamp)
-    new_cur.execute("UPDATE flares SET image_timestamp = ? WHERE flare_id = ?", (image_timestamp.strftime("%Y-%m-%d %H:%M:%S"), row[0]))
+    new_cur.execute(
+        "UPDATE flares SET image_timestamp = ? WHERE flare_id = ?",
+        (image_timestamp.strftime("%Y-%m-%d %H:%M:%S"), row[0]),
+    )
 
 # And for cmes
 for row in tqdm(new_cur.execute("SELECT cme_id, cme_date FROM cmes").fetchall()):
     cme_timestamp = datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S")
     image_timestamp = formatted_timestamp(cme_timestamp)
-    new_cur.execute("UPDATE cmes SET image_timestamp = ? WHERE cme_id = ?", (image_timestamp.strftime("%Y-%m-%d %H:%M:%S"), row[0]))
+    new_cur.execute(
+        "UPDATE cmes SET image_timestamp = ? WHERE cme_id = ?",
+        (image_timestamp.strftime("%Y-%m-%d %H:%M:%S"), row[0]),
+    )
 
 new_conn.commit()
 
@@ -651,30 +790,47 @@ new_cur.execute("DELETE FROM CMES_HARPS_EVENTS")
 for harp in tqdm(harps):
     harp = harp[0]
 
-    flare_data = new_cur.execute("SELECT image_timestamp, flare_id, flare_class_score FROM FLARES WHERE harpnum = ? AND flare_verification != 'Non-verified'", (harp,)).fetchall()
-    flare_timestamps, flare_ids, flare_class_scores = zip(*flare_data) if flare_data else ([], [], [])
+    flare_data = new_cur.execute(
+        "SELECT flare_date, flare_id, flare_class_score FROM FLARES WHERE harpnum = ? AND flare_verification != 'Non-verified'",
+        (harp,),
+    ).fetchall()
+    flare_timestamps, flare_ids, flare_class_scores = (
+        zip(*flare_data) if flare_data else ([], [], [])
+    )
 
-    dimming_data = new_cur.execute("SELECT image_timestamp, dimming_id FROM DIMMINGS WHERE harpnum = ?", (harp,)).fetchall()
+    dimming_data = new_cur.execute(
+        "SELECT dimming_start_date, dimming_id FROM DIMMINGS WHERE harpnum = ?", (harp,)
+    ).fetchall()
     dimming_timestamps, dimming_ids = zip(*dimming_data) if dimming_data else ([], [])
 
-    present_at_cme_data = new_cur.execute("""
-        SELECT c.image_timestamp, c.cme_id from CMES_HARPS_SPATIALLY_CONSIST as sch
+    present_at_cme_data = new_cur.execute(
+        """
+        SELECT c.cme_date, c.cme_id from CMES_HARPS_SPATIALLY_CONSIST as sch
         INNER JOIN CMES as c
         ON sch.cme_id = c.cme_id
         WHERE sch.harpnum = ? 
-    """, (harp,)).fetchall()
-    present_at_cme_timestamps, present_at_cme_ids = zip(*present_at_cme_data) if present_at_cme_data else ([], [])
+    """,
+        (harp,),
+    ).fetchall()
+    present_at_cme_timestamps, present_at_cme_ids = (
+        zip(*present_at_cme_data) if present_at_cme_data else ([], [])
+    )
 
     # Convert to datetime objects
-    flare_timestamps = [datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in flare_timestamps]
-    dimming_timestamps = [datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in dimming_timestamps]
-    present_at_cme_timestamps = [datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in present_at_cme_timestamps]
+    flare_timestamps = [
+        datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in flare_timestamps
+    ]
+    dimming_timestamps = [
+        datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in dimming_timestamps
+    ]
+    present_at_cme_timestamps = [
+        datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in present_at_cme_timestamps
+    ]
 
     used_flare_ids = set()
     used_dimming_ids = set()
 
     for cme_timestamp, cme_id in zip(present_at_cme_timestamps, present_at_cme_ids):
-
         # For Flares
         closest_flare_id = None
         closest_flare_hours_diff = -1
@@ -689,7 +845,13 @@ for harp in tqdm(harps):
                 if min_time_before < hour_diff < association_threshold:
                     if flare_ids[flare_index] not in used_flare_ids:
                         used_flare_ids.add(flare_ids[flare_index])
-                        matching_flares.append((hour_diff, flare_ids[flare_index], flare_class_scores[flare_index]))
+                        matching_flares.append(
+                            (
+                                hour_diff,
+                                flare_ids[flare_index],
+                                flare_class_scores[flare_index],
+                            )
+                        )
                 elif hour_diff > association_threshold:
                     break
 
@@ -711,7 +873,9 @@ for harp in tqdm(harps):
                 if min_time_before < hour_diff < association_threshold:
                     if dimming_ids[dimming_index] not in used_dimming_ids:
                         used_dimming_ids.add(dimming_ids[dimming_index])
-                        matching_dimmings.append((hour_diff, dimming_ids[dimming_index]))
+                        matching_dimmings.append(
+                            (hour_diff, dimming_ids[dimming_index])
+                        )
                 elif hour_diff > association_threshold:
                     break
 
@@ -720,17 +884,27 @@ for harp in tqdm(harps):
                 closest_dimming_hours_diff, closest_dimming_id = closest_dimming
 
         results[(harp, cme_id)] = {
-            'closest_flare_id': closest_flare_id,
-            'closest_flare_hours_diff': closest_flare_hours_diff,
-            'closest_dimming_id': closest_dimming_id,
-            'closest_dimming_hours_diff': closest_dimming_hours_diff
+            "closest_flare_id": closest_flare_id,
+            "closest_flare_hours_diff": closest_flare_hours_diff,
+            "closest_dimming_id": closest_dimming_id,
+            "closest_dimming_hours_diff": closest_dimming_hours_diff,
         }
 
 for (harp, cme_id), event in tqdm(results.items()):
-    new_cur.execute("""
+    new_cur.execute(
+        """
         INSERT INTO CMES_HARPS_EVENTS (harpnum, cme_id, flare_id, flare_hours_diff, dimming_id, dimming_hours_diff)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (harp, cme_id, event['closest_flare_id'], event['closest_flare_hours_diff'], event['closest_dimming_id'], event['closest_dimming_hours_diff']))
+    """,
+        (
+            harp,
+            cme_id,
+            event["closest_flare_id"],
+            event["closest_flare_hours_diff"],
+            event["closest_dimming_id"],
+            event["closest_dimming_hours_diff"],
+        ),
+    )
 
 new_conn.commit()
 
@@ -739,9 +913,12 @@ new_conn.commit()
 
 # Let's see how many potential matches there are
 
-unique_cmes = new_cur.execute("SELECT DISTINCT cme_id from CMES_HARPS_SPATIALLY_CONSIST").fetchall()
+unique_cmes = new_cur.execute(
+    "SELECT DISTINCT cme_id from CMES_HARPS_SPATIALLY_CONSIST"
+).fetchall()
 
 # Now let's get the matches
+
 
 def get_verfification_level(has_dimming, has_flare, flare_class, flare_threshold=25):
     if has_dimming:
@@ -761,13 +938,17 @@ def get_verfification_level(has_dimming, has_flare, flare_class, flare_threshold
         else:
             return -1
 
+
 def verif_level_from_row(row):
-    has_dimming = row['has_dimming']
-    has_flare = 0 if pd.isnull(row['flare_id']) else 1
-    flare_class = None if pd.isnull(row['flare_class_score']) else row['flare_class_score']
-    harpnum = row['harpnum']
+    has_dimming = row["has_dimming"]
+    has_flare = 0 if pd.isnull(row["flare_id"]) else 1
+    flare_class = (
+        None if pd.isnull(row["flare_class_score"]) else row["flare_class_score"]
+    )
+    harpnum = row["harpnum"]
 
     return get_verfification_level(has_dimming, has_flare, flare_class)
+
 
 matches = dict()
 
@@ -783,19 +964,19 @@ for unique_cme in tqdm(unique_cmes):
 
     # Need to replace dimming_id here with either 0 or 1
 
-    df['has_dimming'] = df['dimming_id'].apply(lambda x: 0 if pd.isnull(x) else 1)
+    df["has_dimming"] = df["dimming_id"].apply(lambda x: 0 if pd.isnull(x) else 1)
 
-    sorted_df = df.sort_values(by=['has_dimming', 'flare_class_score'], ascending=False)
+    sorted_df = df.sort_values(by=["has_dimming", "flare_class_score"], ascending=False)
 
     # Apply verif_level_from_row to each row
 
     df["verif_level"] = df.apply(verif_level_from_row, axis=1)
 
-    sorted_df = df.sort_values(by=['verif_level'], ascending=True)
+    sorted_df = df.sort_values(by=["verif_level"], ascending=True)
 
     # But we don't want verification level -1
 
-    sorted_df = sorted_df[sorted_df['verif_level'] != -1]
+    sorted_df = sorted_df[sorted_df["verif_level"] != -1]
 
     # And if this is empty, well there's no match so we continue
 
@@ -806,13 +987,13 @@ for unique_cme in tqdm(unique_cmes):
 
     top_choice = sorted_df.iloc[0]
 
-    verification_level = top_choice['verif_level']
-    harpnum = top_choice['harpnum']
+    verification_level = top_choice["verif_level"]
+    harpnum = top_choice["harpnum"]
 
     # There's a match!
     matches[unique_cme[0]] = {
-        'harpnum': harpnum,
-        'verification_level': verification_level
+        "harpnum": harpnum,
+        "verification_level": verification_level,
     }
 
 new_cur.execute("DELETE FROM FINAL_CME_HARP_ASSOCIATIONS")
@@ -826,6 +1007,9 @@ for cme_id, values in tqdm(matches.items()):
     independent_verfied = 0
 
     # Add to database
-    new_cur.execute("INSERT INTO FINAL_CME_HARP_ASSOCIATIONS (cme_id, harpnum, verification_score, association_method, independent_verified) VALUES (?, ?, ?, ?, ?)", (cme_id, harpnum, verification_score, association_method, independent_verfied))
+    new_cur.execute(
+        "INSERT INTO FINAL_CME_HARP_ASSOCIATIONS (cme_id, harpnum, verification_score, association_method, independent_verified) VALUES (?, ?, ?, ?, ?)",
+        (cme_id, harpnum, verification_score, association_method, independent_verfied),
+    )
 
 new_conn.commit()

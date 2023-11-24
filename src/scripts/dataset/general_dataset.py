@@ -1,5 +1,6 @@
 import sys
-sys.path.append('/home/julio/cmesrc/')
+
+sys.path.append("/home/julio/cmesrc/")
 
 from src.cmesrc.config import CMESRCV3_DB, GENERAL_DATASET
 
@@ -14,11 +15,14 @@ from typing import List, Tuple, Dict, Union, NamedTuple, Optional
 from astropy.units.quantity import Quantity
 from tqdm import tqdm
 
+
 class Finished(Exception):
     """
     Raised when the data processing is finished.
     """
+
     pass
+
 
 class InvalidObservationPeriod(Exception):
     """
@@ -38,34 +42,50 @@ class InvalidObservationPeriod(Exception):
         The ID of the CME event.
     """
 
-    def __init__(self, message: str, reason: str, dimming_id: str = None, flare_id: str = None, cme_id: str = None) -> None:
-        valid_reasons = ['missing_images', 'unclear_cme_present', 'final_cme_association']
-        
+    def __init__(
+        self,
+        message: str,
+        reason: str,
+        dimming_id: str = None,
+        flare_id: str = None,
+        cme_id: str = None,
+    ) -> None:
+        valid_reasons = [
+            "missing_images",
+            "unclear_cme_present",
+            "final_cme_association",
+        ]
+
         if reason not in valid_reasons:
             raise ValueError(f"Invalid reason {reason}.")
-        
+
         self.message = message
         self.reason = reason
 
         if self.reason == "unclear_cme_present":
             if (dimming_id is None and flare_id is None) or cme_id is None:
-                raise ValueError("Must provide at least one of dimming_id, flare_id and a cme_id.")
-            
+                raise ValueError(
+                    "Must provide at least one of dimming_id, flare_id and a cme_id."
+                )
+
             self.dimming_id = dimming_id
             self.flare_id = flare_id
             self.cme_id = cme_id
-        
+
         if self.reason == "final_cme_association":
             if cme_id is None:
                 raise ValueError("Must provide a cme_id.")
-            
+
             self.cme_id = cme_id
+
 
 class NoBBoxData(Exception):
     """
     Raised when no bounding box data is available.
     """
+
     pass
+
 
 def create_temp_table() -> None:
     conn = sqlite3.connect(CMESRCV3_DB)
@@ -73,13 +93,16 @@ def create_temp_table() -> None:
 
     cur.execute("DROP TABLE IF EXISTS NO_LIMB_BBOX")
 
-    cur.execute("""
+    cur.execute(
+        """
                 CREATE TABLE NO_LIMB_BBOX AS
                 SELECT * FROM PROCESSED_HARPS_BBOX
                 WHERE LONDTMIN > -70 AND LONDTMAX < 70
-                """)
-    
-    cur.executescript("""
+                """
+    )
+
+    cur.executescript(
+        """
                 CREATE INDEX IF NOT EXISTS idx_no_limb_bbox_harpnum ON NO_LIMB_BBOX(harpnum);
                 CREATE INDEX IF NOT EXISTS idx_no_limb_bbox_timestamp ON NO_LIMB_BBOX(timestamp);
                 CREATE INDEX IF NOT EXISTS idx_no_limb_bbox_harpnum_timestamp ON NO_LIMB_BBOX(harpnum, timestamp);
@@ -87,7 +110,8 @@ def create_temp_table() -> None:
                 CREATE INDEX IF NOT EXISTS idx_no_limb_bbox_londtmax ON NO_LIMB_BBOX(latdtmax);
                 CREATE INDEX IF NOT EXISTS idx_fcha_harpnum ON FINAL_CME_HARP_ASSOCIATIONS(harpnum);
                 CREATE INDEX IF NOT EXISTS idx_cmes_date ON CMES(cme_date);
-                """)
+                """
+    )
 
     conn.commit()
     conn.close()
@@ -97,7 +121,8 @@ def create_indices() -> None:
     conn = sqlite3.connect(CMESRCV3_DB)
     cur = conn.cursor()
 
-    cur.executescript("""
+    cur.executescript(
+        """
                 CREATE INDEX IF NOT EXISTS idx_processed_harps_bbox_harpnum ON PROCESSED_HARPS_BBOX(harpnum);
                 CREATE INDEX IF NOT EXISTS idx_processed_harps_bbox_timestamp ON PROCESSED_HARPS_BBOX(timestamp);
                 CREATE INDEX IF NOT EXISTS idx_processed_harps_bbox_harpnum_timestamp ON PROCESSED_HARPS_BBOX(harpnum, timestamp);
@@ -105,7 +130,9 @@ def create_indices() -> None:
                 CREATE INDEX IF NOT EXISTS idx_processed_harps_bbox_londtmax ON PROCESSED_HARPS_BBOX(latdtmax);
                 CREATE INDEX IF NOT EXISTS idx_fcha_harpnum ON FINAL_CME_HARP_ASSOCIATIONS(harpnum);
                 CREATE INDEX IF NOT EXISTS idx_cmes_date ON CMES(cme_date);
-                """)
+                """
+    )
+
 
 class AcceptedRow(NamedTuple):
     harpnum: int
@@ -128,6 +155,7 @@ class AcceptedRow(NamedTuple):
     verification_level: Optional[int]
     cme_id: Optional[int]
 
+
 class RejectedRow(NamedTuple):
     harpnum: int
     lead_in_start: str
@@ -139,6 +167,7 @@ class RejectedRow(NamedTuple):
     reason: str
     message: str
 
+
 # Define exception to be raise when finished
 
 try:
@@ -146,13 +175,22 @@ try:
 except NameError:
     profile = lambda x: x
 
-class HarpsDatasetSlices():
-    #@conditional_decorator(typechecked)
+
+class HarpsDatasetSlices:
+    # @conditional_decorator(typechecked)
     @profile
-    def __init__(self, harpnum: int, O: Quantity, S: Quantity, db_path: str = CMESRCV3_DB, strict: bool = False, table: str = "PROCESSED_HARPS_BBOX"):
+    def __init__(
+        self,
+        harpnum: int,
+        O: Quantity,
+        S: Quantity,
+        db_path: str = CMESRCV3_DB,
+        strict: bool = False,
+        table: str = "PROCESSED_HARPS_BBOX",
+    ):
         """
         Initialize a HarpsDatasetSlices object to manage HARPS dataset slices for solar physics research.
-        
+
         Parameters
         ----------
         harpnum : int
@@ -167,7 +205,7 @@ class HarpsDatasetSlices():
             Whether to enforce strict conditions for the observation period. Default is False.
         table : str, optional
             The name of the database table to query for data. Default is "PROCESSED_HARPS_BBOX".
-        
+
         Attributes
         ----------
         table : str
@@ -241,13 +279,15 @@ class HarpsDatasetSlices():
 
         # Fetch the first timestamp
         self.cur.execute(
-            f"SELECT MIN(datetime(timestamp)) FROM PROCESSED_HARPS_BBOX WHERE harpnum = ?", (self.harpnum,)
+            f"SELECT MIN(datetime(timestamp)) FROM PROCESSED_HARPS_BBOX WHERE harpnum = ?",
+            (self.harpnum,),
         )
         first_str_timestamp = self.cur.fetchone()[0]
-        
+
         # Fetch the last timestamp
         self.cur.execute(
-            f"SELECT MAX(datetime(timestamp)) FROM PROCESSED_HARPS_BBOX WHERE harpnum = ?", (self.harpnum,)
+            f"SELECT MAX(datetime(timestamp)) FROM PROCESSED_HARPS_BBOX WHERE harpnum = ?",
+            (self.harpnum,),
         )
         last_str_timestamp = self.cur.fetchone()[0]
 
@@ -275,50 +315,49 @@ class HarpsDatasetSlices():
         """
         self.first_timestamp = self.first_timestamp.replace(minute=30, second=0)
         self.last_timestamp = self.last_timestamp.replace(minute=30, second=0)
-    
+
     def __check_period_lengths(self) -> None:
         """
         Validate the lengths of the observation and step periods.
-        
+
         This method checks if the lengths of the observation period (`O`) and the step size (`S`)
         are both positive and multiples of 1 hour. Raises a `ValueError` if any of these conditions
         are not met.
-        
+
         Raises
         ------
         ValueError
             If the observation period or step size is either negative or not a multiple of 1 hour.
-            
+
         Returns
         -------
         None
         """
         # Define a mapping between attribute names and their human-readable equivalents
-        period_names = {
-            'O': "Observation period",
-            'S': "Step size"
-        }
+        period_names = {"O": "Observation period", "S": "Step size"}
 
         # Validate each period length
         for period_value, period_name in zip([self.O, self.S], period_names.keys()):
             if period_value < 0:
                 raise ValueError(f"{period_names[period_name]} must be positive.")
-            
+
             if period_value % 1 != 0:
-                raise ValueError(f"{period_names[period_name]} must be a multiple of 1 hour.")
+                raise ValueError(
+                    f"{period_names[period_name]} must be a multiple of 1 hour."
+                )
 
     def __get_timestamp_bounds(self) -> Tuple[astropy.time.Time, astropy.time.Time]:
         """
         Get the first and last timestamps for the given harpnum.
-        
-        This method fetches the earliest and latest timestamps for the harpnum from the database. 
+
+        This method fetches the earliest and latest timestamps for the harpnum from the database.
         It raises a specific error if no data is found for the given harpnum.
-        
+
         Raises
         ------
         NoBBoxData
             If no bounding box data is available for the given harpnum.
-            
+
         Returns
         -------
         Tuple[astropy.time.Time, astropy.time.Time]
@@ -326,13 +365,15 @@ class HarpsDatasetSlices():
         """
         # Fetch the first timestamp
         self.cur.execute(
-            f"SELECT MIN(datetime(timestamp)) FROM {self.table} WHERE harpnum = ?", (self.harpnum,)
+            f"SELECT MIN(datetime(timestamp)) FROM {self.table} WHERE harpnum = ?",
+            (self.harpnum,),
         )
         first_str_timestamp = self.cur.fetchone()[0]
-        
+
         # Fetch the last timestamp
         self.cur.execute(
-            f"SELECT MAX(datetime(timestamp)) FROM {self.table} WHERE harpnum = ?", (self.harpnum,)
+            f"SELECT MAX(datetime(timestamp)) FROM {self.table} WHERE harpnum = ?",
+            (self.harpnum,),
         )
         last_str_timestamp = self.cur.fetchone()[0]
 
@@ -352,8 +393,8 @@ class HarpsDatasetSlices():
 
         This method calculates the bounds for the lead-in, observation, and prediction periods based
         on the current timestamp, observation period length (`O`), first timestamp, and last timestamp.
-        
-        Sets the attributes `lead_in_period`, `observation_period`, and `prediction_period` with the 
+
+        Sets the attributes `lead_in_period`, `observation_period`, and `prediction_period` with the
         calculated bounds.
 
         Returns
@@ -362,20 +403,26 @@ class HarpsDatasetSlices():
         """
         # Pre-compute end of observation period based on current timestamp and observation length
         end_of_observation = self.current_timestamp + timedelta(hours=self.O)
-        
+
         # Calculate bounds for each period
         # Because of the half an hour bounds I need a max() call here to ensure that the pred_end is not smaller than obs_end
-#        lead_in_bounds = (self.first_timestamp, self.current_timestamp)
-        lead_in_bounds = (min(self.life_start, self.first_timestamp), self.current_timestamp)
+        #        lead_in_bounds = (self.first_timestamp, self.current_timestamp)
+        lead_in_bounds = (
+            min(self.life_start, self.first_timestamp),
+            self.current_timestamp,
+        )
         observation_bounds = (self.current_timestamp, end_of_observation)
-        prediction_bounds = (end_of_observation, max(self.life_end, self.last_timestamp))
-#        prediction_bounds = (end_of_observation, self.last_timestamp)
-        
+        prediction_bounds = (
+            end_of_observation,
+            max(self.life_end, self.last_timestamp),
+        )
+        #        prediction_bounds = (end_of_observation, self.last_timestamp)
+
         # Assign calculated bounds to class attributes
         self.lead_in_period = lead_in_bounds
         self.observation_period = observation_bounds
         self.prediction_period = prediction_bounds
-    
+
     def _check_observation_period(self) -> None:
         """
         Validate the current observation period based on certain conditions.
@@ -421,11 +468,13 @@ class HarpsDatasetSlices():
         self.cur.execute(query, (self.harpnum, start, end, self.harpnum))
         results = self.cur.fetchall()
         if len(results) != 0:
-            raise InvalidObservationPeriod("Observation period has a CME with dimming or flare associated with it.",
-                                        reason='unclear_cme_present',
-                                        dimming_id=results[0][2],
-                                        flare_id=results[0][1],
-                                        cme_id=results[0][0])
+            raise InvalidObservationPeriod(
+                "Observation period has a CME with dimming or flare associated with it.",
+                reason="unclear_cme_present",
+                dimming_id=results[0][2],
+                flare_id=results[0][1],
+                cme_id=results[0][0],
+            )
 
     def _check_final_cme_association(self, start: str, end: str) -> None:
         """Check for a final CME association."""
@@ -438,12 +487,15 @@ class HarpsDatasetSlices():
         self.cur.execute(query, (self.harpnum, start, end))
         results = self.cur.fetchall()
         if len(results) != 0:
-            raise InvalidObservationPeriod("Observation period has a final CME association.",
-                                        reason='final_cme_association',
-                                        cme_id=results[0][0])
-    
+            raise InvalidObservationPeriod(
+                "Observation period has a final CME association.",
+                reason="final_cme_association",
+                cme_id=results[0][0],
+            )
 
-    def _get_previous_cme(self) -> Union[Tuple[None, None, int], Tuple[int, float, int]]:
+    def _get_previous_cme(
+        self,
+    ) -> Union[Tuple[None, None, int], Tuple[int, float, int]]:
         """
         Get the previous CME information for the given harpnum.
 
@@ -467,7 +519,7 @@ class HarpsDatasetSlices():
         # Validate lead-in period
         if self.lead_in_period is None:
             raise ValueError("No lead-in period.")
-        
+
         # Prepare time bounds for query
         start = self.lead_in_period[0].strftime("%Y-%m-%d %H:%M:%S")
         end = self.lead_in_period[1].strftime("%Y-%m-%d %H:%M:%S")
@@ -488,7 +540,7 @@ class HarpsDatasetSlices():
         # Check if any CMEs were found
         if len(results) == 0:
             return (None, None, 0, counts)
-        
+
         for _, _, level in results:
             counts[level] += 1
 
@@ -499,7 +551,9 @@ class HarpsDatasetSlices():
 
         return (cme_id, diff, len(results), counts)
 
-    def _get_label(self) -> Tuple[int, Union[float, None], Union[int, None], Union[int, None]]:
+    def _get_label(
+        self,
+    ) -> Tuple[int, Union[float, None], Union[int, None], Union[int, None]]:
         """
         Get the label and relevant metadata for the current observation period.
 
@@ -546,13 +600,13 @@ class HarpsDatasetSlices():
     def get_current_row(self) -> Tuple[int, Union[AcceptedRow, RejectedRow]]:
         """
         Retrieve the current row data for the dataset.
-        
+
         Returns
         -------
         Tuple[int, Union[accepted_row, rejected_row]]
             A tuple containing a flag (1 for accepted row, 0 for rejected) and the row data.
         """
-        
+
         # Validate the observation period
         try:
             self._check_observation_period()
@@ -562,15 +616,15 @@ class HarpsDatasetSlices():
                 0,  # Flag for a rejected row
                 (
                     self.harpnum,
-                    self.lead_in_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.lead_in_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.observation_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.observation_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.prediction_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.prediction_period[1].strftime('%Y-%m-%d %H:%M:%S'),
+                    self.lead_in_period[0].strftime("%Y-%m-%d %H:%M:%S"),
+                    self.lead_in_period[1].strftime("%Y-%m-%d %H:%M:%S"),
+                    self.observation_period[0].strftime("%Y-%m-%d %H:%M:%S"),
+                    self.observation_period[1].strftime("%Y-%m-%d %H:%M:%S"),
+                    self.prediction_period[0].strftime("%Y-%m-%d %H:%M:%S"),
+                    self.prediction_period[1].strftime("%Y-%m-%d %H:%M:%S"),
                     e.reason,
-                    e.message
-                )
+                    e.message,
+                ),
             )
 
         # Get previous CME information and number of CMEs in the lead-in period
@@ -584,12 +638,12 @@ class HarpsDatasetSlices():
             1,  # Flag for an accepted row
             (
                 self.harpnum,
-                self.lead_in_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                self.lead_in_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                self.observation_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                self.observation_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                self.prediction_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                self.prediction_period[1].strftime('%Y-%m-%d %H:%M:%S'),
+                self.lead_in_period[0].strftime("%Y-%m-%d %H:%M:%S"),
+                self.lead_in_period[1].strftime("%Y-%m-%d %H:%M:%S"),
+                self.observation_period[0].strftime("%Y-%m-%d %H:%M:%S"),
+                self.observation_period[1].strftime("%Y-%m-%d %H:%M:%S"),
+                self.prediction_period[0].strftime("%Y-%m-%d %H:%M:%S"),
+                self.prediction_period[1].strftime("%Y-%m-%d %H:%M:%S"),
                 prev_cme_id,
                 prev_diff,
                 n_cmes,
@@ -601,15 +655,14 @@ class HarpsDatasetSlices():
                 label,
                 diff,
                 verification_level,
-                cme_id
-            )
+                cme_id,
+            ),
         )
 
-    
     def step(self) -> None:
         """
         Step the current timestamp forward by S.
-        
+
         Returns
         -------
         None
@@ -618,20 +671,20 @@ class HarpsDatasetSlices():
         # Check we haven't reached the end of the dataset
         if self.finished:
             raise Finished("Dataset has been fully processed.")
-        
+
         next_observation_end = self.observation_period[1] + timedelta(hours=self.S)
-        
+
         if next_observation_end > self.last_timestamp:
             self.finished = True
             return
-        
+
         self.current_timestamp += timedelta(hours=self.S)
         self._get_period_bounds()
 
 
 @profile
 def test_run() -> None:
-    O = 12 * u.hour 
+    O = 12 * u.hour
     P = 24 * u.hour
     L = 24 * u.hour
     S = 1 * u.hour
@@ -647,6 +700,7 @@ def test_run() -> None:
         next_row = test.get_current_row()
         print(next_row)
 
+
 def get_harpnum_list(table: str = "NO_LIMB_BBOX") -> List[int]:
     conn = sqlite3.connect(CMESRCV3_DB)
     cur = conn.cursor()
@@ -659,7 +713,10 @@ def get_harpnum_list(table: str = "NO_LIMB_BBOX") -> List[int]:
 
     return harpnum_list
 
-def get_all_rows(O: Quantity, S: Quantity, strict: bool = False, table: str = "PROCESSED_HARPS_BBOX") -> Tuple[List[AcceptedRow], List[RejectedRow]]:
+
+def get_all_rows(
+    O: Quantity, S: Quantity, strict: bool = False, table: str = "PROCESSED_HARPS_BBOX"
+) -> Tuple[List[AcceptedRow], List[RejectedRow]]:
     """
     Generate all rows for a set of HARPs datasets.
 
@@ -690,7 +747,6 @@ def get_all_rows(O: Quantity, S: Quantity, strict: bool = False, table: str = "P
 
     # Loop through each HARPs number
     for harpnum in tqdm(harpnum_list):
-
         try:
             # Initialize the dataset
             dataset = HarpsDatasetSlices(harpnum, O, S, strict=strict, table=table)
@@ -698,12 +754,27 @@ def get_all_rows(O: Quantity, S: Quantity, strict: bool = False, table: str = "P
 
         except NoBBoxData:
             # Handle cases with no bounding box data
-            first_row = (0, (harpnum, None, None, None, None, None, None, "no_bbox_data", "No BBox data for this harpnum."))
+            first_row = (
+                0,
+                (
+                    harpnum,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    "no_bbox_data",
+                    "No BBox data for this harpnum.",
+                ),
+            )
             rejected_rows.append(first_row)
             continue
 
         # Add the first row to the appropriate list
-        accepted_rows.append(first_row) if first_row[0] == 1 else rejected_rows.append(first_row)
+        accepted_rows.append(first_row) if first_row[0] == 1 else rejected_rows.append(
+            first_row
+        )
 
         # Step through the dataset and collect rows
         dataset.step()
@@ -714,10 +785,16 @@ def get_all_rows(O: Quantity, S: Quantity, strict: bool = False, table: str = "P
 
     return accepted_rows, rejected_rows
 
-def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[RejectedRow], db_path: str = GENERAL_DATASET, main_database = CMESRCV3_DB) -> None:
+
+def write_into_database(
+    accepted_rows: List[AcceptedRow],
+    rejected_rows: List[RejectedRow],
+    db_path: str = GENERAL_DATASET,
+    main_database=CMESRCV3_DB,
+) -> None:
     """
     Write the accepted and rejected rows into the specified SQLite database.
-    
+
     Parameters
     ----------
     accepted_rows : List[AcceptedRow]
@@ -726,12 +803,12 @@ def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[Re
         List of rejected rows to be inserted into the GENERAL_DATASET_REJECTED table.
     db_path : str, optional
         The path to the SQLite database. Default is CMESRCV3_DB.
-    
+
     Returns
     -------
     None
     """
-    
+
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
     cur = conn.cursor()
@@ -743,27 +820,43 @@ def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[Re
 
         cur.execute("DROP TABLE IF EXISTS main.HARPS")
 
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE main.HARPS AS
             SELECT * FROM CMESRCV3.HARPS
-        """)
+        """
+        )
 
         # Same with CMEs table
 
         cur.execute("DROP TABLE IF EXISTS main.CMES")
 
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE main.CMES AS
             SELECT * FROM CMESRCV3.CMES
-        """)
+        """
+        )
 
         cur.execute("DROP TABLE IF EXISTS main.FINAL_CME_HARP_ASSOCIATIONS")
 
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE main.FINAL_CME_HARP_ASSOCIATIONS AS
             SELECT * FROM CMESRCV3.FINAL_CME_HARP_ASSOCIATIONS
-            """)
+            """
+        )
 
+        # Same with the HARPS_KEYWORDS table
+
+        cur.execute("DROP TABLE IF EXISTS main.HARPS_KEYWORDS")
+
+        cur.execute(
+            """
+        CREATE TABLE main.HARPS_KEYWORDS AS
+        SELECT * FROM CMESRCV3.HARPS_KEYWORDS
+        """
+        )
 
         # Detach the main database
 
@@ -773,11 +866,10 @@ def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[Re
 
         conn.commit()
 
-
-
     # Create the accepted_rows table
     cur.execute("DROP TABLE IF EXISTS GENERAL_DATASET")
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS GENERAL_DATASET (
             slice_id INTEGER PRIMARY KEY AUTOINCREMENT,
             harpnum INT NOT NULL,
@@ -800,11 +892,13 @@ def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[Re
             verification_level INTEGER,
             cme_id INT
         )
-    """)
+    """
+    )
 
     # Create the rejected_rows table
     cur.execute("DROP TABLE IF EXISTS GENERAL_DATASET_REJECTED")
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS GENERAL_DATASET_REJECTED (
             slice_id INTEGER PRIMARY KEY AUTOINCREMENT,
             harpnum INT NOT NULL,
@@ -817,8 +911,8 @@ def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[Re
             reason TEXT NOT NULL,
             message TEXT NOT NULL
         )
-    """)
-
+    """
+    )
     # Insert the rows into the tables
     for row in tqdm(accepted_rows):
         # Make double sure harpnum is int
@@ -829,30 +923,35 @@ def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[Re
         nrow = tuple(nrow)
 
         try:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO GENERAL_DATASET
                 (harpnum, lead_in_start, lead_in_end, obs_start, obs_end, pred_start, pred_end, prev_cme_id, prev_cme_diff, n_cmes_before, n_cmes_before_1, n_cmes_before_2, n_cmes_before_3, n_cmes_before_4, n_cmes_before_5, label, cme_diff, verification_level, cme_id)
                 VALUES
                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, nrow)
+            """,
+                nrow,
+            )
         # Except foreign key constraint violations
         except sqlite3.OperationalError as e:
             print(nrow)
             raise e
 
     for row in tqdm(rejected_rows):
-
         nrow = list(row[1])
         nrow[0] = int(nrow[0])
         nrow = tuple(nrow)
 
         try:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO GENERAL_DATASET_REJECTED
                 (harpnum, lead_in_start, lead_in_end, obs_start, obs_end, pred_start, pred_end, reason, message)
                 VALUES
                 (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, nrow)
+            """,
+                nrow,
+            )
         # Except foreign key constraint violations
         except sqlite3.OperationalError as e:
             raise e
@@ -864,5 +963,8 @@ def write_into_database(accepted_rows: List[AcceptedRow], rejected_rows: List[Re
 if __name__ == "__main__":
     create_indices()
     create_temp_table()
-    accepted_rows, rejected_rows = get_all_rows(24 * u.hour, 1 * u.hour, strict=True, table="NO_LIMB_BBOX")
+    accepted_rows, rejected_rows = get_all_rows(
+        24 * u.hour, 1 * u.hour, strict=True, table="NO_LIMB_BBOX"
+    )
     write_into_database(accepted_rows, rejected_rows)
+
