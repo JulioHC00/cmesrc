@@ -1,24 +1,17 @@
 import sys
-
+from tqdm import tqdm
+import bisect
+from datetime import datetime, timedelta
+import pandas as pd
+import sqlite3
+import subprocess
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
-import subprocess
-import sqlite3
-from tqdm import tqdm
-import pandas as pd
-import matplotlib.pyplot as plt
-import pickle
-from datetime import datetime, timedelta
-from tqdm import tqdm
-import bisect
-
 from src.cmesrc.config import (
-    CMESRCV2_DB,
     CMESRCV3_DB,
     HARPNUM_TO_NOAA,
     LASCO_CME_DATABASE,
-    SDOML_TIMESTAMP_INFO,
     SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE,
     DIMMINGS_MATCHED_TO_HARPS_PICKLE,
     FLARES_MATCHED_TO_HARPS_PICKLE,

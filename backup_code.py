@@ -1,18 +1,17 @@
 import sys
 sys.path.append('/home/julio/cmesrc/')
 
-from src.cmesrc.config import CMESRCV3_DB
+from src.cmesrc.config import CMESRCV2_DB
 
 import sqlite3
 import numpy as np
 import pandas as pd
-from datetime import timedelta, datetime
+import datetime
 import astropy.units as u
 from astropy.time import Time
 import astropy.time
 from typing import List, Tuple, Dict, Union
 from astropy.units.quantity import Quantity
-from tqdm import tqdm
 
 class Finished(Exception):
     pass
@@ -41,12 +40,11 @@ class InvalidObservationPeriod(Exception):
                 self.cme_id = cme_id
 
 def create_hourly_table(force: bool = False) -> None:
-    conn = sqlite3.connect(CMESRCV3_DB)
+    conn = sqlite3.connect(CMESRCV2_DB)
     cur = conn.cursor()
 
     if force:
         cur.execute("DROP TABLE IF EXISTS HOURLY_BBOX")
-        cur.execute("DROP TABLE IF EXISTS HOURLY_PIXEL_BBOX")
 
     cur.execute("""
             CREATE TABLE IF NOT EXISTS HOURLY_BBOX AS 
@@ -54,23 +52,12 @@ def create_hourly_table(force: bool = False) -> None:
             WHERE strftime("%M", timestamp) IN ("00", "12", "24")
             GROUP BY harpnum, strftime("%Y %m %d %H", timestamp)
                 """)
-    
-    cur.execute("""
-            CREATE TABLE IF NOT EXISTS HOURLY_PIXEL_BBOX AS
-            SELECT PHPBB.* FROM PROCESSED_HARPS_PIXEL_BBOX PHPBB
-            JOIN HOURLY_BBOX HBB
-            ON PHPBB.harpnum = HBB.harpnum AND PHPBB.timestamp = HBB.timestamp
-            WHERE HBB.LONDTMIN > -70 AND HBB.LONDTMAX < 70
-            """)
 
     cur.executescript("""
                 CREATE INDEX IF NOT EXISTS idx_hourly_bbox_harpnum ON HOURLY_BBOX(harpnum);
                 CREATE INDEX IF NOT EXISTS idx_hourly_bbox_timestamp ON HOURLY_BBOX(timestamp);
-                CREATE INDEX IF NOT EXISTS idx_hourly_bbox_harpnum_timestamp ON HOURLY_BBOX(harpnum, timestamp);
                 CREATE INDEX IF NOT EXISTS idx_hourly_bbox_londtmin ON HOURLY_BBOX(latdtmin);
                 CREATE INDEX IF NOT EXISTS idx_hourly_bbox_londtmax ON HOURLY_BBOX(latdtmax);
-                CREATE INDEX IF NOT EXISTS idx_fcha_harpnum ON FINAL_CME_HARP_ASSOCIATIONS(harpnum);
-                CREATE INDEX IF NOT EXISTS idx_cmes_date ON CMES(cme_date);
                 """)
 
     conn.close()
@@ -99,7 +86,7 @@ except NameError:
 class HarpsDatasetSlices():
     #@conditional_decorator(typechecked)
     @profile
-    def __init__(self, harpnum: int, O: Quantity, P: Quantity, L: Quantity, S: Quantity, db_path: str = CMESRCV3_DB, strict: bool = False):
+    def __init__(self, harpnum: int, O: Quantity, P: Quantity, L: Quantity, S: Quantity, db_path: str = CMESRCV2_DB):
         """
         Create a HarpsDatasetSlices object.
 
@@ -117,12 +104,10 @@ class HarpsDatasetSlices():
             The step size. Astropy units required.
         """
         self.harpnum = int(harpnum)
-        self.O = O.to(u.hour).value
-        self.P = P.to(u.hour).value
-        self.L = L.to(u.hour).value
-        self.S = S.to(u.hour).value
-
-        self.strict = strict
+        self.O = O
+        self.P = P
+        self.L = L
+        self.S = S
 
         self.__check_period_lengths()
 
@@ -132,10 +117,6 @@ class HarpsDatasetSlices():
 
         self.first_timestamp = self.__get_first_timestamp()
         self.last_timestamp = self.__get_last_timestamp()
-
-        # Need to force these timestamps to be at o'clock
-        self.first_timestamp = self.first_timestamp.replace(minute=30, second=0)
-        self.last_timestamp = self.last_timestamp.replace(minute=30, second=0)
 
         self.current_timestamp = self.first_timestamp
 
@@ -164,7 +145,7 @@ class HarpsDatasetSlices():
         for period, name in zip([self.O, self.P, self.L, self.S], names.keys()):
             if period < 0:
                 raise ValueError(f"{names[name]} must be positive.")
-            if (period * 60) % 12 != 0 * u.minute:
+            if period.to(u.minute).value % (12 * u.minute).value != 0 * u.minute:
                 raise ValueError(
                     f"{names[name]} must be a multiple of 12 minutes.")
             else:
@@ -187,7 +168,7 @@ class HarpsDatasetSlices():
         if str_timestamp is None:
             raise ValueError(f"No data for harpnum {self.harpnum}")
 
-        return datetime.fromisoformat(str_timestamp)
+        return astropy.time.Time(str_timestamp)
 
     #@conditional_decorator(typechecked)
     @profile
@@ -204,15 +185,15 @@ class HarpsDatasetSlices():
         if str_timestamp is None:
             raise ValueError(f"No data for harpnum {self.harpnum}")
 
-        return datetime.fromisoformat(str_timestamp)
+        return astropy.time.Time(str_timestamp)
 
     @profile
     def _get_period_bounds(self) -> None:
 
         # Pre-compute intermediate results
-        self.current_minus_L = self.current_timestamp - timedelta(hours=self.L)
-        self.current_plus_O = self.current_timestamp + timedelta(hours=self.O)
-        self.current_plus_O_plus_P = self.current_plus_O + timedelta(hours=self.P)
+        self.current_minus_L = self.current_timestamp - self.L
+        self.current_plus_O = self.current_timestamp + self.O
+        self.current_plus_O_plus_P = self.current_timestamp + self.O + self.P
 
         # Use temporary variables to hold period data
         if self.current_minus_L < self.first_timestamp:
@@ -254,16 +235,16 @@ class HarpsDatasetSlices():
 
     #@conditional_decorator(typechecked)
     @profile
-    def _check_observation_period(self) -> int:
+    def _check_observation_period(self, strict: bool = False) -> int:
         # It is assumed that everytime the current timestamp is updated,
         # the period bounds are also updated.
 
-        start_dt, end_dt = self.observation_period
+        start, end = self.observation_period
 
         # Format to yyyy-mm-dd hh:mm:ss
 
-        start = (start_dt - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
-        end = (end_dt + timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
+        start = start.iso.split('.')[0]
+        end = end.iso.split('.')[0]
 
         # Need to count how many images there are in the observation period, with
         # LONDTMIN > -70 and LONDTMAX < 70
@@ -271,41 +252,24 @@ class HarpsDatasetSlices():
         self.cur.execute("""
         SELECT COUNT(*) FROM HOURLY_BBOX
         WHERE harpnum = ? 
-        AND timestamp BETWEEN ? AND ?
-        AND LONDTMIN > -70 AND LONDTMAX < 70
+        AND datetime(timestamp) BETWEEN datetime(?) AND datetime(?)
+        AND LONDTMIN > -70 
+        AND LONDTMAX < 70
         """, (self.harpnum, start, end))
 
-#        AND datetime(timestamp) BETWEEN datetime(?) AND datetime(?)
         count = int(self.cur.fetchone()[0])
 
         # The number of images should be equal to O (with O in hours)
-        # If missing more than 1 images, then the observation period is invalid
+        # If missing more than 2 images, then the observation period is invalid
 
-        if count < int(self.O) - 1 :
-            raise InvalidObservationPeriod(f"Observation period is missing {int(self.O) - count} images.",
+        if count < int(self.O.to(u.hour).value) - 2:
+            raise InvalidObservationPeriod(f"Observation period has {count} images, which is less than O - 2 = {int(5 * self.O.to(u.hour).value - 2)} images.",
                                            reason='missing_images')
-
-        # If it's missing one check it's not the last one
-        if count < int(self.O):
-            # Need to check the last timestamp is not more than one hour away from the end of the observation period
-            self.cur.execute("""
-            SELECT MAX(timestamp) FROM HOURLY_BBOX
-            WHERE harpnum = ?
-            AND timestamp BETWEEN ? AND ?
-            AND LONDTMIN > -70 AND LONDTMAX < 70
-            """, (self.harpnum, start, end))
-
-            last_timestamp = datetime.fromisoformat(self.cur.fetchone()[0])
-
-            if (end_dt - last_timestamp).total_seconds() / 3600 > 1:
-                raise InvalidObservationPeriod("Observation period is missing the last image.",
-                                               reason='missing_images')
-
 
         # If strict is True, then we require that during the observation period, the region
         # wasn't spatially consistent with a CME AND had a dimming or a flare or both
 
-        if self.strict:
+        if strict:
             # See if region was present at CME and if so if any dimming or flares are associated with that pressence
 
             query = """     
@@ -369,8 +333,8 @@ class HarpsDatasetSlices():
             raise ValueError("No lead-in period.")
 
         # We use the lead-in period to get the previous CME
-        start = self.lead_in_period[0].strftime("%Y-%m-%d %H:%M:%S")
-        end = self.lead_in_period[1].strftime("%Y-%m-%d %H:%M:%S")
+        start = self.lead_in_period[0].iso.split('.')[0]
+        end = self.lead_in_period[1].iso.split('.')[0]
 
         # Query closest CME to observation period
         query = """
@@ -393,8 +357,8 @@ class HarpsDatasetSlices():
             # Otherwise, return cme_id and diff with start of observation period
 
             cme_id = int(results[0][0])
-            cme_date = datetime.fromisoformat(results[0][1])
-            diff = float((self.observation_period[0] - cme_date).total_seconds() / 3600)
+            cme_date = Time(results[0][1])
+            diff = float((self.observation_period[0] - cme_date).to(u.hour).value)
 
             return cme_id, diff
 
@@ -405,8 +369,8 @@ class HarpsDatasetSlices():
         Get the label for the observation period.
         """
 
-        start = self.prediction_period[0].strftime("%Y-%m-%d %H:%M:%S")
-        end = self.prediction_period[1].strftime("%Y-%m-%d %H:%M:%S")
+        start = self.prediction_period[0].iso.split('.')[0]
+        end = self.prediction_period[1].iso.split('.')[0]
 
         query = """
             SELECT FCHA.cme_id, C.cme_date, FCHA.verification_score FROM FINAL_CME_HARP_ASSOCIATIONS FCHA
@@ -421,15 +385,15 @@ class HarpsDatasetSlices():
 
         results = self.cur.fetchall()
 
-        # If length is 0, then there's no CME in the prediction period
+        # If length is 0, then there's no CME in the observation period
         if len(results) == 0:
             return (0, None, None, None)
         else:
-            # Otherwise, return cme_id and diff with end of observation period
+            # Otherwise, return cme_id and diff with start of observation period
 
             cme_id = int(results[0][0])
-            cme_date = datetime.fromisoformat(results[0][1])
-            diff = float((cme_date - self.observation_period[1]).total_seconds() / 3600)
+            cme_date = Time(results[0][1])
+            diff = float((cme_date - self.observation_period[1]).to(u.hour).value)
             verification_level = int(results[0][2])
 
             return (1, diff, verification_level, cme_id)
@@ -445,14 +409,13 @@ class HarpsDatasetSlices():
             # If it's not valid, then we return the rejected row
             row = (0, # Because it's a rejected row
                    (self.harpnum,
-                    self.lead_in_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.lead_in_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.observation_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.observation_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.prediction_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                    self.prediction_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                    e.reason,
-                    e.message))
+                    self.lead_in_period[0].iso.split('.')[0],
+                    self.lead_in_period[1].iso.split('.')[0],
+                    self.observation_period[0].iso.split('.')[0],
+                    self.observation_period[1].iso.split('.')[0],
+                    self.prediction_period[0].iso.split('.')[0],
+                    self.prediction_period[1].iso.split('.')[0],
+                    e.reason))
             return row
 
         # Next we have to get the previous CME
@@ -466,12 +429,12 @@ class HarpsDatasetSlices():
 
         row = (1, # Because it's an accepted row
                (self.harpnum,
-                self.lead_in_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                self.lead_in_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                self.observation_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                self.observation_period[1].strftime('%Y-%m-%d %H:%M:%S'),
-                self.prediction_period[0].strftime('%Y-%m-%d %H:%M:%S'),
-                self.prediction_period[1].strftime('%Y-%m-%d %H:%M:%S'),
+                self.lead_in_period[0].iso.split('.')[0],
+                self.lead_in_period[1].iso.split('.')[0],
+                self.observation_period[0].iso.split('.')[0],
+                self.observation_period[1].iso.split('.')[0],
+                self.prediction_period[0].iso.split('.')[0],
+                self.prediction_period[1].iso.split('.')[0],
                 prev_cme_id,
                 prev_diff,
                 label,
@@ -489,11 +452,11 @@ class HarpsDatasetSlices():
         Step the current timestamp forward by S.
         """
 
-        if self.prediction_period[1] + timedelta(hours=self.S) > self.last_timestamp:
+        if self.prediction_period[1] + self.S > self.last_timestamp:
             self.finished = True
             return None
 
-        self.current_timestamp += timedelta(hours=self.S)
+        self.current_timestamp += self.S
 
         self._get_period_bounds()
 
@@ -512,114 +475,8 @@ def test_run() -> None:
 
     while not test.finished:
         test.step()
-        if test.finished:
-            break
         next_row = test.get_current_row()
-        print(next_row)
-
-def get_harpnum_list() -> List[int]:
-    conn = sqlite3.connect(CMESRCV3_DB)
-    cur = conn.cursor()
-
-    cur.execute("SELECT DISTINCT harpnum FROM HOURLY_BBOX")
-
-    harpnum_list = [int(x[0]) for x in cur.fetchall()]
-
-    conn.close()
-
-    return harpnum_list
-
-def get_all_rows(O: Quantity, P: Quantity, L: Quantity, S: Quantity, strict: bool = False) -> Tuple[List[accepted_row], List[rejected_row]]:
-    harpnum_list = get_harpnum_list()
-
-    accepted_rows = []
-    rejected_rows = []
-
-    for harpnum in tqdm(harpnum_list):
-        dataset = HarpsDatasetSlices(harpnum, O, P, L, S, strict=strict)
-        firs_row = dataset.get_current_row()
-        _ = accepted_rows.append(firs_row) if firs_row[0] == 1 else rejected_rows.append(firs_row)
-        dataset.step()
-        while not dataset.finished:
-            row = dataset.get_current_row()
-            _ = accepted_rows.append(row) if row[0] == 1 else rejected_rows.append(row)
-            dataset.step()
-            if dataset.finished:
-                break
-    
-    return accepted_rows, rejected_rows
-
-def write_into_database(accepted_rows: List[accepted_row], rejected_rows: List[rejected_row], db_path: str = CMESRCV3_DB) -> None:
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON")
-    cur = conn.cursor()
-
-    # First we need to create the accepted_rows table
-
-    cur.execute("DROP TABLE IF EXISTS HARPS_DATASET_SLICES")
-
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS HARPS_DATASET_SLICES (
-                    slice_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    harpnum INTEGER NOT NULL REFERENCES HARPS(harpnum),
-                    lead_in_start TEXT NOT NULL,
-                    lead_in_end TEXT NOT NULL,
-                    obs_start TEXT NOT NULL,
-                    obs_end TEXT NOT NULL,
-                    pred_start TEXT NOT NULL,
-                    pred_end TEXT NOT NULL,
-                    prev_cme_id INTEGER REFERENCES CMES(cme_id),
-                    prev_cme_diff REAL,
-                    label INTEGER NOT NULL,
-                    cme_diff REAL,
-                    verification_level INTEGER,
-                    cme_id INTEGER REFERENCES CMES(cme_id),
-                    n_images INTEGER NOT NULL
-                    )
-                """
-                )
-    
-    # Now the rejected_rows table
-
-    cur.execute("DROP TABLE IF EXISTS HARPS_DATASET_REJECTED_SLICES")
-
-    cur.execute("""
-                CREATE TABLE IF NOT EXISTS HARPS_DATASET_REJECTED_SLICES (
-                    slice_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    harpnum INTEGER NOT NULL REFERENCES HARPS(harpnum),
-                    lead_in_start TEXT NOT NULL,
-                    lead_in_end TEXT NOT NULL,
-                    obs_start TEXT NOT NULL,
-                    obs_end TEXT NOT NULL,
-                    pred_start TEXT NOT NULL,
-                    pred_end TEXT NOT NULL,
-                    reason TEXT NOT NULL,
-                    message TEXT NOT NULL
-                    )
-                """
-                ) 
-        
-    # Now we insert the rows
-    for row in tqdm(accepted_rows):
-        cur.execute("""
-                    INSERT INTO HARPS_DATASET_SLICES
-                    (harpnum, lead_in_start, lead_in_end, obs_start, obs_end, pred_start, pred_end, prev_cme_id, prev_cme_diff, label, cme_diff, verification_level, cme_id, n_images)
-                    VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, row[1])
-    
-    for row in tqdm(rejected_rows):
-        cur.execute("""
-                    INSERT INTO HARPS_DATASET_REJECTED_SLICES
-                    (harpnum, lead_in_start, lead_in_end, obs_start, obs_end, pred_start, pred_end, reason, message)
-                    VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, row[1])
-    
-    conn.commit()
-    conn.close()
 
 if __name__ == "__main__":
     create_hourly_table(force=False)
-    accepted_rows, rejected_rows = get_all_rows(24 * u.hour, 24 * u.hour, 12 * u.hour, 1 * u.hour, strict=True)
-    write_into_database(accepted_rows, rejected_rows)
+    test_run()

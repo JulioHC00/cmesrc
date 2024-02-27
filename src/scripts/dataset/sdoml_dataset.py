@@ -478,7 +478,7 @@ INNER JOIN slice_img_counts SIC ON GD.slice_id = SIC.slice_id
 INNER JOIN ACCEPTED_HARPS AH ON GD.harpnum = AH.harpnum
 WHERE 
 SIC.img_count = 24 OR
-(SIC.img_count = 23 AND ((strftime(GD.obs_end) - strftime(SIC.end_image)) / 60.0) <= 30)
+(SIC.img_count = 23 AND ((strftime('%s', GD.obs_end) - strftime('%s', SIC.end_image)) / 60.0) <= 30)
 """
 )
 
@@ -1030,4 +1030,3 @@ print("Combined pivot")
 print(combined_pivot.to_markdown())
 
 conn.close()
-
