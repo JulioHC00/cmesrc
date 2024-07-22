@@ -46,8 +46,8 @@ This document outlines the steps executed when running `make all` in the project
    - Input: `./data/interim/spatiotemporal_matching_harps_database.csv`, `./src/flares/flares.py`, `./data/raw/flares/goes_sxr_flares.csv`
    - Output: `./data/interim/flares_matched_to_harps.csv`
 
-8. **Collate Results**:
-   - Description: This script collates all the results from the previous steps into a main database.
+8. **[DEPRECATED] Collate Results**:
+   - Description: This step is deprecated. Use `src/scripts/catalogue/generate_catalogue.py` instead.
    - Script: `./src/scripts/collect_results/collate_results.py`
    - Input: `./data/interim/spatiotemporal_matching_harps_database.csv`, `./data/interim/dimmings_matched_to_harps.csv`, `./data/interim/flares_matched_to_harps.csv`
    - Output: `./data/interim/main_database.csv`
