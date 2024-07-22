@@ -24,7 +24,7 @@ def clear_screen():
 
 
 FORCE = True
-RERUN_CATALOGUE_SCRIPTS = False
+RERUN_CATALOGUE_SCRIPTS = True
 N_STEPS = 5
 
 clear_screen()
@@ -560,10 +560,11 @@ if not RERUN_CATALOGUE_SCRIPTS:
         print("Error message: {}".format(e))
         sys.exit(1)
 else:
-    # We first need to touch one of the early files so it's all rerun
-    # Touch LASCO_CME_DATABASE to be edited now
+    # If one of the early files exist we touch it, otherwise we just run make all
     print("Rerunning everything...")
-    os.utime(LASCO_CME_DATABASE, None)
+
+    if os.path.exists(LASCO_CME_DATABASE):
+        os.utime(LASCO_CME_DATABASE, None)
 
     # And now we run make all
     try:
