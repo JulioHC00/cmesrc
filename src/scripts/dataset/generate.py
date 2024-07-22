@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/home/julio/cmesrc/')
 
-from src.cmesrc.config import CMESRCV3_DB
+from src.cmesrc.config import CMESRC_DB
 
 import sqlite3
 import numpy as np
@@ -41,7 +41,7 @@ class InvalidObservationPeriod(Exception):
                 self.cme_id = cme_id
 
 def create_hourly_table(force: bool = False) -> None:
-    conn = sqlite3.connect(CMESRCV3_DB)
+    conn = sqlite3.connect(CMESRC_DB)
     cur = conn.cursor()
 
     if force:
@@ -99,7 +99,7 @@ except NameError:
 class HarpsDatasetSlices():
     #@conditional_decorator(typechecked)
     @profile
-    def __init__(self, harpnum: int, O: Quantity, P: Quantity, L: Quantity, S: Quantity, db_path: str = CMESRCV3_DB, strict: bool = False):
+    def __init__(self, harpnum: int, O: Quantity, P: Quantity, L: Quantity, S: Quantity, db_path: str = CMESRC_DB, strict: bool = False):
         """
         Create a HarpsDatasetSlices object.
 
@@ -518,7 +518,7 @@ def test_run() -> None:
         print(next_row)
 
 def get_harpnum_list() -> List[int]:
-    conn = sqlite3.connect(CMESRCV3_DB)
+    conn = sqlite3.connect(CMESRC_DB)
     cur = conn.cursor()
 
     cur.execute("SELECT DISTINCT harpnum FROM HOURLY_BBOX")
@@ -549,7 +549,7 @@ def get_all_rows(O: Quantity, P: Quantity, L: Quantity, S: Quantity, strict: boo
     
     return accepted_rows, rejected_rows
 
-def write_into_database(accepted_rows: List[accepted_row], rejected_rows: List[rejected_row], db_path: str = CMESRCV3_DB) -> None:
+def write_into_database(accepted_rows: List[accepted_row], rejected_rows: List[rejected_row], db_path: str = CMESRC_DB) -> None:
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
     cur = conn.cursor()

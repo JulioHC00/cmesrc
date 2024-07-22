@@ -7,7 +7,7 @@ from src.cmesrc.config import (
     LASCO_CME_DATABASE,
     TEMPORAL_MATCHING_HARPS_DATABASE,
     TEMPORAL_MATCHING_HARPS_DATABASE_PICKLE,
-    CMESRCV3_DB,
+    CMESRC_BBOXES,
 )
 from src.cmesrc.utils import clear_screen
 import numpy as np
@@ -17,7 +17,7 @@ from bisect import bisect_right
 import pandas as pd
 import sqlite3
 
-conn = sqlite3.connect(CMESRCV3_DB)
+conn = sqlite3.connect(CMESRC_BBOXES)
 cur = conn.cursor()
 
 lasco_cme_database = pd.read_csv(LASCO_CME_DATABASE)

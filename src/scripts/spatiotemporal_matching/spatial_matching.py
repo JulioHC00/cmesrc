@@ -7,7 +7,7 @@ from src.cmesrc.config import (
     SPATIOTEMPORAL_MATCHING_HARPS_DATABASE_PICKLE,
     MAIN_DATABASE,
     MAIN_DATABASE_PICKLE,
-    CMESRCV3_DB,
+    CMESRC_BBOXES,
 )
 from src.cmesrc.utils import (
     get_closest_harps_timestamp,
@@ -24,7 +24,7 @@ import astropy.units as u
 import sqlite3
 from src.cmesrc.exception_classes import InvalidBoundingBox
 
-conn = sqlite3.connect(CMESRCV3_DB)
+conn = sqlite3.connect(CMESRC_BBOXES)
 cur = conn.cursor()
 
 # Let's create an index in case it doesn't exist to make things faster

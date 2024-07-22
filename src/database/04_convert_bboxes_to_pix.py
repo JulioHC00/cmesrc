@@ -10,7 +10,7 @@ import numpy as np
 from queue import Empty as QueueEmpty
 import pickle
 
-from src.cmesrc.config import CMESRCV3_DB, SDOML_TIMESTAMP_INFO
+from src.cmesrc.config import CMESRC_DB, SDOML_TIMESTAMP_INFO
 
 #########################################################
 #########################################################
@@ -24,7 +24,7 @@ with open(SDOML_TIMESTAMP_INFO, "rb") as f:
     sdoml_timestamp_info = pickle.load(f)
 
 
-con = sqlite3.connect(CMESRCV3_DB, timeout=1)
+con = sqlite3.connect(CMESRC_DB, timeout=1)
 con.execute("PRAGMA foreign_keys = ON")
 cur = con.cursor()
 
@@ -45,7 +45,7 @@ con.close()
 def calculate_pixel_values(offset, length, pid, queue):
     pbar = tqdm(total=length)
 
-    con = sqlite3.connect(CMESRCV3_DB, timeout=1)
+    con = sqlite3.connect(CMESRC_DB, timeout=1)
     con.execute("PRAGMA foreign_keys = ON")
 
     cursor = con.cursor()

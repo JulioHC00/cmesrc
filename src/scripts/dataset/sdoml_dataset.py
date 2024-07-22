@@ -3,7 +3,7 @@ import sys
 sys.path.append("/home/julio/cmesrc/")
 
 from src.cmesrc.config import (
-    CMESRCV3_DB,
+    CMESRC_DB,
     PIXEL_BBOXES,
     SDOML_DATASET,
     GENERAL_DATASET,

@@ -111,8 +111,7 @@ FLARES_MATCHED_TO_HARPS_PICKLE = os.path.join(
 UPDATED_SWAN = os.path.join(INTERIM_DATA_DIR, "SWAN/")
 
 CMESRC_DB = os.path.join(PROCESSED_DATA_DIR, "cmesrc.db")
-CMESRCV2_DB = os.path.join(PROCESSED_DATA_DIR, "cmesrcV2.db")
-CMESRCV3_DB = os.path.join(PROCESSED_DATA_DIR, "cmesrcV3.db")
+CMESRC_BBOXES = os.path.join(PROCESSED_DATA_DIR, "cmesrc_BBOXES.db")
 GENERAL_DATASET = os.path.join(PROCESSED_DATA_DIR, "general_dataset.db")
 PIXEL_BBOXES = os.path.join(PROCESSED_DATA_DIR, "pixel_bbox.db")
 SDOML_DATASET = os.path.join(PROCESSED_DATA_DIR, "sdoml_dataset.db")
@@ -124,4 +123,3 @@ HARPNUM_TO_NOAA = os.path.join(
 )
 RESEARCH_LOG = "/home/julio/research_log/"
 ZARR_BASE_PATH = "/home/julio/cutouts/cutouts/"
-

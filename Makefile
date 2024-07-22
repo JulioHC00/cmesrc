@@ -69,16 +69,20 @@ test_environment:
 ORIG_SWAN := $(wildcard ./data/raw/mvts/DT_SWAN/*.csv)
 UPDATED_SWAN := $(patsubst ./data/raw/mvts/DT_SWAN/%.csv, ./data/interim/SWAN/%.csv, $(ORIG_SWAN))
 
-.PHONY: all
-all: ./data/interim/main_database.csv
+.PHONY: generate_catalogue
+generate_catalogue: ./data/processed/cmesrc.db
 
 ## Fill missing SWAN positions
 
 $(UPDATED_SWAN): ./src/scripts/pre-processing/fill_swan_missing_positions.py $(ORIG_SWAN)
 	@python3 $<
 
+## Pre-load these
+./data/processed/cmesrc_BBOXES.db: ./src/scripts/catalogue/pre_data_loading.py $(UPDATED_SWAN)
+	@python3 $<
+
 ## Create HARPS lifetime database
-./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py $(UPDATED_SWAN)
+./data/interim/harps_lifetime_database.csv: ./src/scripts/pre-processing/extract_harps_lifetimes.py $(UPDATED_SWAN) ./data/processed/cmesrc_BBOXES.db
 	@python3 $<
 
 ## Parse LASCO CME Database
@@ -98,11 +102,11 @@ $(UPDATED_SWAN): ./src/scripts/pre-processing/fill_swan_missing_positions.py $(O
 	@python3 $<
 
 # Match flares
-./data/interim/flares_matched_to_harps.csv: ./src/scripts/flares/match_flares_to_harps.py ./data/interim/spatiotemporal_matching_harps_database.csv ./src/flares/flares.py ./data/raw/flares/goes_sxr_flares.csv
+./data/interim/flares_matched_to_harps.csv: ./src/scripts/flares/match_flares_to_harps.py ./data/interim/spatiotemporal_matching_harps_database.csv ./src/flares/flares.py $(ORIG_SWAN)
 	@python3 $<
 
-# Collate results
-./data/interim/main_database.csv: ./src/scripts/collect_results/collate_results.py ./data/interim/spatiotemporal_matching_harps_database.csv ./data/interim/dimmings_matched_to_harps.csv ./data/interim/flares_matched_to_harps.csv
+# Generate catalogue
+./data/processed/cmesrc.db: ./src/scripts/catalogue/generate_catalogue.py ./data/interim/spatiotemporal_matching_harps_database.csv ./data/interim/dimmings_matched_to_harps.csv ./data/interim/flares_matched_to_harps.csv ./data/processed/cmesrc_BBOXES.db
 	@python3 $<
 
 #################################################################################

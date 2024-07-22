@@ -13,13 +13,13 @@ from src.cmesrc.config import (
     RAW_DIMMINGS_CATALOGUE,
     DIMMINGS_MATCHED_TO_HARPS,
     DIMMINGS_MATCHED_TO_HARPS_PICKLE,
-    CMESRCV3_DB,
+    CMESRC_BBOXES,
 )
 
 import sqlite3
 from bisect import bisect_right
 
-conn = sqlite3.connect(CMESRCV3_DB)
+conn = sqlite3.connect(CMESRC_BBOXES)
 cur = conn.cursor()
 
 DEG_TO_RAD = np.pi / 180

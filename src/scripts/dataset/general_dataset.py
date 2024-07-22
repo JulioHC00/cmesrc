@@ -2,7 +2,7 @@ import sys
 
 sys.path.append("/home/julio/cmesrc/")
 
-from src.cmesrc.config import CMESRCV3_DB, GENERAL_DATASET
+from src.cmesrc.config import CMESRC_DB, GENERAL_DATASET
 
 import sqlite3
 import numpy as np
@@ -88,7 +88,7 @@ class NoBBoxData(Exception):
 
 
 def create_temp_table() -> None:
-    conn = sqlite3.connect(CMESRCV3_DB)
+    conn = sqlite3.connect(CMESRC_DB)
     cur = conn.cursor()
 
     cur.execute("DROP TABLE IF EXISTS NO_LIMB_BBOX")
@@ -118,7 +118,7 @@ def create_temp_table() -> None:
 
 
 def create_indices() -> None:
-    conn = sqlite3.connect(CMESRCV3_DB)
+    conn = sqlite3.connect(CMESRC_DB)
     cur = conn.cursor()
 
     cur.executescript(
@@ -184,7 +184,7 @@ class HarpsDatasetSlices:
         harpnum: int,
         O: Quantity,
         S: Quantity,
-        db_path: str = CMESRCV3_DB,
+        db_path: str = CMESRC_DB,
         strict: bool = False,
         table: str = "PROCESSED_HARPS_BBOX",
     ):
@@ -200,7 +200,7 @@ class HarpsDatasetSlices:
         S : Quantity
             The step size for moving the observation window. Must be an Astropy Quantity object with time units.
         db_path : str, optional
-            The path to the database containing HARPS data. Default is `CMESRCV3_DB`.
+            The path to the database containing HARPS data. Default is `CMESRC_DB`.
         strict : bool, optional
             Whether to enforce strict conditions for the observation period. Default is False.
         table : str, optional
@@ -702,7 +702,7 @@ def test_run() -> None:
 
 
 def get_harpnum_list(table: str = "NO_LIMB_BBOX") -> List[int]:
-    conn = sqlite3.connect(CMESRCV3_DB)
+    conn = sqlite3.connect(CMESRC_DB)
     cur = conn.cursor()
 
     cur.execute(f"SELECT DISTINCT harpnum FROM {table}")
@@ -790,7 +790,7 @@ def write_into_database(
     accepted_rows: List[AcceptedRow],
     rejected_rows: List[RejectedRow],
     db_path: str = GENERAL_DATASET,
-    main_database=CMESRCV3_DB,
+    main_database=CMESRC_DB,
 ) -> None:
     """
     Write the accepted and rejected rows into the specified SQLite database.
@@ -802,7 +802,7 @@ def write_into_database(
     rejected_rows : List[RejectedRow]
         List of rejected rows to be inserted into the GENERAL_DATASET_REJECTED table.
     db_path : str, optional
-        The path to the SQLite database. Default is CMESRCV3_DB.
+        The path to the SQLite database. Default is CMESRC_DB.
 
     Returns
     -------
