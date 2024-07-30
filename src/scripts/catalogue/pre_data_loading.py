@@ -1,4 +1,12 @@
 from src.cmesrc.utils import read_SWAN_filepath, filepaths_updated_swan_data
+"""
+This script prepares the database for the CMESRC project by:
+1. Creating necessary tables.
+2. Loading data from SWAN files into the database.
+3. Calculating areas and overlaps for HARPS.
+4. Processing HARPS bounding boxes.
+"""
+
 import sys
 from tqdm import tqdm
 import pandas as pd
@@ -7,6 +15,7 @@ import os
 
 
 def clear_screen():
+    """Clears the terminal screen."""
     os.system("cls" if os.name == "nt" else "clear")
 
 
@@ -17,15 +26,16 @@ from src.cmesrc.config import (
     HARPNUM_TO_NOAA,
 )
 
+# Print a message to indicate the start of the pre-data loading script
 print("Pre-data loading script")
 
-# If this is being called by make all is because we need to recreate the database
+# If the script is called by 'make all', it means we need to recreate the database
 if os.path.exists(CMESRC_BBOXES):
     os.remove(CMESRC_BBOXES)
 if os.path.exists(CMESRC_DB):
     os.remove(CMESRC_DB)
 
-# Create CMESRC_BBOXES
+# Create the CMESRC_BBOXES database if it doesn't exist
 new_conn = sqlite3.connect(CMESRC_BBOXES)
 new_cur = new_conn.cursor()
 
@@ -186,7 +196,7 @@ CREATE TABLE NOAAS (
 
 new_conn.commit()
 
-# Now read the data
+# Now, read the data from SWAN files and load it into the database
 
 swan_filepaths = filepaths_updated_swan_data()
 new_cur.execute("DELETE FROM RAW_HARPS_BBOX;")
@@ -244,7 +254,7 @@ for row in data:
 
 new_conn.commit()
 
-# Now read HARPs-NOAA mapping
+# Now, read the HARPs-NOAA mapping and load it into the database
 
 new_cur.execute("DELETE FROM NOAA_HARPNUM_MAPPING;")
 new_cur.execute("DELETE FROM NOAAS;")
@@ -281,7 +291,7 @@ FROM NOAA_HARPNUM_MAPPING
 """
 )
 
-# Now we get to calculating areas and overlaps
+# Now, calculate areas and overlaps for HARPS
 
 clear_screen()
 print("Data pre-loading: Calculating areas and overlaps")
@@ -311,8 +321,8 @@ SET n_noaas = (SELECT COUNT(noaa)
 
 new_conn.commit()
 
-# Calculating the overlaps is a step by step process
-# 1. We remove too big harps
+# Calculating the overlaps involves several steps:
+# 1. Remove HARPS that are too large
 
 new_cur.execute("CREATE INDEX IF NOT EXISTS idx_harps_area ON HARPS (area);")
 new_cur.execute("CREATE INDEX IF NOT EXISTS idx_harps_harpnum ON HARPS (area);")
@@ -327,7 +337,7 @@ CREATE TEMPORARY TABLE NO_BIG_HARPS AS
                 """
 )
 
-# 2. We trim the bounding boxes that extend beyond the limb
+# 2. Trim bounding boxes that extend beyond the solar limb
 
 new_cur.execute(
     "CREATE INDEX IF NOT EXISTS idx_no_big_harps_harpnum ON NO_BIG_HARPS (LONDTMIN);"
@@ -373,8 +383,9 @@ WHERE LONDTMAX > 90
 """
 )
 
-# 3. Now we need to calculate the actual overlaps
+# 3. Calculate the actual overlaps between HARPS
 
+# Print a message to indicate the start of overlap calculation
 print("Calculating overlaps...")
 new_cur.executescript(
     """
@@ -465,6 +476,7 @@ for index, row in bad_overlaps.iterrows():
 
 new_conn.commit()
 
+# Print a message to indicate the start of creating the processed_harps_bbox table
 print("Creating processed_harps_bbox table...")
 # Now fill processed_harps_bbox
 
