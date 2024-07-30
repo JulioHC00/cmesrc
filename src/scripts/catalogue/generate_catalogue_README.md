@@ -18,9 +18,16 @@ The script performs the following steps:
    - Calculates the closest timestamps for dimmings, flares, and CMEs.
 
 3. **Associating Events**:
-   - Associates dimmings, flares, and CMEs based on temporal and spatial criteria.
-   - Determines the verification level for each association.
-   - Saves the final associations into the database.
+   - **Temporal Association**:
+     - For each CME, the script identifies the closest flares and dimmings based on their timestamps.
+     - The closest events are determined within a specified temporal threshold.
+   - **Spatial Association**:
+     - The script verifies if the identified flares and dimmings are spatially consistent with the CME based on their coordinates.
+   - **Verification Level Determination**:
+     - The verification level is determined based on the presence of both flares and dimmings, and the intensity of the flares.
+     - Higher verification levels are assigned if both flares and dimmings are present and the flare intensity exceeds a predefined threshold.
+   - **Saving Associations**:
+     - The associations between CMEs, flares, and dimmings, along with their verification levels, are saved into the database for further analysis.
 
 ## Functions
 
