@@ -71,4 +71,3 @@ The script performs the following steps:
 - **Filter Out Problematic Regions**: The script filters out regions that were marked for deletion or merging during the overlap resolution process.
 - **Finalize Processed Bounding Boxes**: It creates the `PROCESSED_HARPS_BBOX` table containing the cleaned and validated bounding boxes ready for further analysis.
 
-This script is crucial for ensuring the completeness and accuracy of the data by transforming raw bounding box data into a clean, validated, and ready-to-use format, which is essential for subsequent analysis and visualization tasks.
