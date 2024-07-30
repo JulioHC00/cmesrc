@@ -1,6 +1,6 @@
 # match_flares_to_harps.py
 
-This script processes flare data from SWAN (Solar Wind ANisotropies) files and matches flares to HARPS (HMI Active Region Patches) regions based on their occurrence time and spatial attributes.
+This script processes flare data from SWAN files and matches flares to HARPS (HMI Active Region Patches) regions based on their occurrence time and spatial attributes.
 
 ## Overview
 
