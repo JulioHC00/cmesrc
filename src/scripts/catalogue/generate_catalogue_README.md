@@ -57,4 +57,3 @@ The script performs the following steps:
     - `flare_threshold` (int): The threshold for the flare class score.
   - Returns the verification level.
 
-This script is crucial for creating a comprehensive catalogue of solar events, ensuring that the data is accurately loaded and associated for further analysis.
