@@ -1,3 +1,9 @@
+"""
+This script fills missing positions in SWAN data by interpolating bounding boxes
+for intervals where data is missing. It processes each SWAN item in parallel using
+a ProcessPoolExecutor.
+"""
+
 from src.cmesrc.utils import filepaths_dt_swan_data, clear_screen, read_SWAN_filepath
 from src.cmesrc.config import UPDATED_SWAN
 from tqdm import tqdm
@@ -9,11 +15,13 @@ from os.path import join, exists
 from os import mkdir
 import concurrent.futures
 
+# Ensure the directory for updated SWAN data exists
 if not exists(UPDATED_SWAN):
     mkdir(UPDATED_SWAN)
 
 clear_screen()
 
+# Get file paths for SWAN data
 SWAN = filepaths_dt_swan_data()
 
 clear_screen()
@@ -22,6 +30,15 @@ print("== FILLING MISSING VALUES ==")
 
 
 def get_nan_intervals(nan_bbox_mask):
+    """
+    Identify intervals in the nan_bbox_mask where NaN values occur.
+
+    Parameters:
+    nan_bbox_mask (array-like): A mask indicating where bounding box data is NaN.
+
+    Yields:
+    tuple: A tuple containing the start and end indices of each interval where NaN values occur.
+    """
     start = None
     end = None
 
@@ -47,9 +64,20 @@ def get_nan_intervals(nan_bbox_mask):
 
 
 def process_swan_item(swan_item):
+    """
+    Process a single SWAN item to fill missing bounding box positions.
+
+    Parameters:
+    swan_item (tuple): A tuple containing the HARPNUM and the file path to the SWAN data.
+
+    This function reads the SWAN data, identifies intervals where bounding box data is missing,
+    and fills these intervals by interpolating from the nearest available data. The updated
+    SWAN data is then saved to a new file.
+    """
     harpnum, swan_filepath = swan_item
     swan_harp = read_SWAN_filepath(swan_filepath)
 
+    # Identify rows where any of the bounding box coordinates are NaN
     nan_bbox_mask = (
         swan_harp[["LONDTMIN", "LONDTMAX", "LATDTMIN", "LATDTMAX"]].isna().any(axis=1)
     )
@@ -63,6 +91,7 @@ def process_swan_item(swan_item):
         start, end = interval
         middle = (start + end) // 2
 
+        # Determine the indices for the nearest available data before and after the interval
         if start != 0:
             first_index = start - 1
         else:
@@ -83,6 +112,7 @@ def process_swan_item(swan_item):
         first_harps = Harps(*first_harp_data)
         last_harps = Harps(*last_harp_data)
 
+        # Interpolate bounding boxes for the interval
         harps = [first_harps if i <= middle else last_harps for i in range(start, end)]
 
         incomplete_rows = swan_harp.iloc[start:end]
@@ -96,6 +126,7 @@ def process_swan_item(swan_item):
             ]
         )
 
+        # Update the new SWAN data with the interpolated bounding boxes
         new_swan_harp.loc[incomplete_indices, "LONDTMIN"] = new_bboxes[:, 0, 0]
         new_swan_harp.loc[incomplete_indices, "LATDTMIN"] = new_bboxes[:, 0, 1]
         new_swan_harp.loc[incomplete_indices, "LONDTMAX"] = new_bboxes[:, 1, 0]
@@ -105,6 +136,7 @@ def process_swan_item(swan_item):
 
     filename = f"{harpnum}.csv"
 
+    # Save the updated SWAN data to a new file
     new_swan_harp.to_csv(join(UPDATED_SWAN, filename), sep="\t", index=False)
 
 
