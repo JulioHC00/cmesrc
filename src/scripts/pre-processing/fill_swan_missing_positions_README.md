@@ -38,5 +38,4 @@ The script performs the following steps:
   - Reads the SHARPs data, identifies intervals where bounding box data is missing, and fills these intervals by interpolating from the nearest available data.
   - Saves the updated SHARPs data to a new file.
 
-This script is crucial for ensuring the completeness and accuracy of SHARPs data by filling in missing bounding box positions, which is essential for subsequent analysis and visualization tasks.
 
