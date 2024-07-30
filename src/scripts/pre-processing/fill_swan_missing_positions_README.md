@@ -1,4 +1,3 @@
-"""
 fill_swan_missing_positions.py
 
 This script is designed to process SHARPs (Spaceweather HMI Active Region Patches) data, specifically to fill in missing positions within bounding boxes over time. It identifies intervals where bounding box data is missing and interpolates these intervals using the nearest available data. The script operates in parallel to efficiently handle large datasets.
@@ -41,4 +40,3 @@ The script performs the following steps:
 
 This script is crucial for ensuring the completeness and accuracy of SHARPs data by filling in missing bounding box positions, which is essential for subsequent analysis and visualization tasks.
 
-"""
