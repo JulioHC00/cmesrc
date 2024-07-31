@@ -114,19 +114,19 @@ $(UPDATED_SWAN): ./src/scripts/pre-processing/fill_swan_missing_positions.py $(O
 #################################################################################
 
 ## Install requirements and set up virtual environment
-install_requirements:
+create_environment:
 	@echo "Checking if pip is installed..."
 	@command -v pip > /dev/null 2>&1 || { echo >&2 "pip is required but it's not installed. Aborting."; exit 1; }
 	@echo "Checking if venv is installed..."
 	@python3 -m venv --help > /dev/null 2>&1 || { echo >&2 "venv is required but it's not installed. Installing venv..."; python3 -m pip install virtualenv; }
 	@echo "Creating virtual environment in env folder..."
 	@python3 -m venv env
-	@echo "Installing requirements from requirements.txt..."
-	@echo "Activating virtual environment..."
-	@source env/bin/activate
+	@echo "Virtual environment set up successfully. Activate with 'source env/bin/activate'."
+
+install_requirements:
 	@echo "Installing requirements from requirements.txt..."
 	@pip install -r requirements.txt
-	@echo "Virtual environment set up successfully. Activate it with: source env/bin/activate"
+	@	echo "Requirements installed successfully."
 
 #################################################################################
 # Self Documenting Commands                                                     #
