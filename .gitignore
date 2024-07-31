@@ -79,6 +79,8 @@ target/
 /data/raw/*
 /data/interim/*
 /data/processed/*
+!/data/processed/cmesrc_README.md
+!.gitkeep
 
 # Mac OS-specific storage files
 .DS_Store
