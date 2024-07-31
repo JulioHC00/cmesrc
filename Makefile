@@ -1,4 +1,4 @@
-.PHONY: clean lint requirements sync_data_to_s3 sync_data_from_s3
+.PHONY: clean lint requirements sync_data_to_s3 sync_data_from_s3 install_requirements
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -108,6 +108,22 @@ $(UPDATED_SWAN): ./src/scripts/pre-processing/fill_swan_missing_positions.py $(O
 # Generate catalogue
 ./data/processed/cmesrc.db: ./src/scripts/catalogue/generate_catalogue.py ./data/interim/spatiotemporal_matching_harps_database.csv ./data/interim/dimmings_matched_to_harps.csv ./data/interim/flares_matched_to_harps.csv ./data/processed/cmesrc_BBOXES.db
 	@python3 $<
+
+#################################################################################
+# COMMANDS                                                                      #
+#################################################################################
+
+## Install requirements and set up virtual environment
+install_requirements:
+	@echo "Checking if pip is installed..."
+	@command -v pip > /dev/null 2>&1 || { echo >&2 "pip is required but it's not installed. Aborting."; exit 1; }
+	@echo "Checking if venv is installed..."
+	@python3 -m venv --help > /dev/null 2>&1 || { echo >&2 "venv is required but it's not installed. Installing venv..."; python3 -m pip install virtualenv; }
+	@echo "Creating virtual environment in env folder..."
+	@python3 -m venv env
+	@echo "Installing requirements from requirements.txt..."
+	@./env/bin/pip install -r requirements.txt
+	@echo "Virtual environment set up successfully. Activate it with: source env/bin/activate"
 
 #################################################################################
 # Self Documenting Commands                                                     #
