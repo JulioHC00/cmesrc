@@ -56,9 +56,7 @@ LAST_AVAILABLE_HARPS = max(harps_lifetime_end_times)
 CME_TIME_MASK = np.array(cme_detection_times >= FIRST_AVAILABLE_HARPS) & np.array(
     (cme_detection_times <= LAST_AVAILABLE_HARPS)
 )
-CME_QUALITY_MASK = (
-    lasco_cme_database["CME_QUALITY"] == 0
-)  # & (lasco_cme_database["CME_THREE_POINTS"] == 0) # CMEs withou poor or very poor flags and without few points warning.
+CME_QUALITY_MASK = lasco_cme_database["CME_QUALITY"] == 0
 CME_FULL_MASK = CME_TIME_MASK & CME_QUALITY_MASK
 
 masked_lasco_cme_database = lasco_cme_database[CME_FULL_MASK]
