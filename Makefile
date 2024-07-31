@@ -123,7 +123,9 @@ install_requirements:
 	@python3 -m venv env
 	@echo "Installing requirements from requirements.txt..."
 	@echo "Activating virtual environment..."
-	@source env/bin/activate && pip install -r requirements.txt
+	@source env/bin/activate
+	@echo "Installing requirements from requirements.txt..."
+	@pip install -r requirements.txt
 	@echo "Virtual environment set up successfully. Activate it with: source env/bin/activate"
 
 #################################################################################
