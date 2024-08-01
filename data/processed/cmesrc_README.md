@@ -11,9 +11,8 @@ This document provides a detailed description of each table and column in the CM
   - `harpnum` (INTEGER PRIMARY KEY): Unique identifier for each HARP region.
   - `start` (TEXT NOT NULL): Start timestamp of the HARP region.
   - `end` (TEXT NOT NULL): End timestamp of the HARP region.
-  - `area` (FLOAT): Area of the HARP region.
-  - `n_noaas` (INTEGER): Maximum number of NOAA active regions in the HARP region.  
-
+  - `area` (FLOAT): Area of the HARP region as a fraction of half the solar disk.
+  - `n_noaas` (INTEGER): Number of NOAA active regions in the HARP region.
 
 ### CMES
 
@@ -27,8 +26,7 @@ This document provides a detailed description of each table and column in the CM
   - `cme_seen_in` (INTEGER NOT NULL): Where the CME was observed (e.g., C2, C3).
   - `cme_three_points` (INTEGER NOT NULL): Number of observed points for the CME.
   - `cme_quality` (INTEGER NOT NULL): Quality rating for the CME observation.
-  - `image_timestamp` (TEXT): Timestamp of the associated image.  
-
+  - `image_timestamp` (TEXT): Timestamp of the associated image.
 
 ### FLARES
 
@@ -44,8 +42,7 @@ This document provides a detailed description of each table and column in the CM
   - `flare_ar` (INTEGER): Active Region number of the flare.
   - `flare_ar_source` (TEXT): Source of the Active Region number.
   - `flare_verification` (TEXT): Verification status of the flare information.
-  - `image_timestamp` (TEXT): Timestamp of the associated image.  
-
+  - `image_timestamp` (TEXT): Timestamp of the associated image.
 
 ### RAW_HARPS_BBOX
 
@@ -58,8 +55,7 @@ This document provides a detailed description of each table and column in the CM
   - `LATDTMIN` (REAL): Minimum latitude of BBOX.
   - `LATDTMAX` (REAL): Maximum latitude of BBOX.
   - `IRBB` (INTEGER): Specifies if the BBOX is calculated using differential solar rotation.
-  - `IS_TMFI` (INTEGER): Specifies if the magnetic field data is trusted.  
-
+  - `IS_TMFI` (INTEGER): Specifies if the magnetic field data is trusted.
 
 ### FINAL_CME_HARP_ASSOCIATIONS
 
@@ -69,9 +65,7 @@ This document provides a detailed description of each table and column in the CM
   - `harpnum` (INTEGER NOT NULL REFERENCES HARPS(harpnum)): Associated HARP region.
   - `association_method` (TEXT NOT NULL): Method used to determine the association.
   - `verification_score` (REAL): Confidence score of the association.
-  - `independent_verified` (INTEGER NOT NULL DEFAULT 0): Verification level for association (0 if only by me,  
-    if verified by external).  
-
+  - `independent_verified` (INTEGER NOT NULL DEFAULT 0): Meant to be used if CMEs are verified beyond automatic association. Not in use
 
 ### OVERLAPS
 
@@ -86,8 +80,7 @@ This document provides a detailed description of each table and column in the CM
   - `harpnum_a_area` (REAL): Area of the first HARP region.
   - `harpnum_a_pixel_area` (REAL): Pixel area of the first HARP region.
   - `harpnum_b_area` (REAL): Area of the second HARP region.
-  - `coexistence` (REAL): Coexistence value of the overlap.  
-
+  - `coexistence` (REAL): Coexistence value of the overlap.
 
 ### OVERLAP_RECORDS
 
@@ -101,8 +94,7 @@ This document provides a detailed description of each table and column in the CM
   - `ocurrence_percentage` (REAL): Occurrence percentage of the overlap.
   - `harpnum_a_area` (REAL): Area of the first HARP region.
   - `harpnum_b_area` (REAL): Area of the second HARP region.
-  - `b_over_a_area_ratio` (REAL): Area ratio of the second HARP region over the first.  
-
+  - `b_over_a_area_ratio` (REAL): Area ratio of the second HARP region over the first.
 
 ### PROCESSED_HARPS_BBOX
 
@@ -115,8 +107,7 @@ This document provides a detailed description of each table and column in the CM
   - `LATDTMIN` (REAL): Minimum latitude of BBOX.
   - `LATDTMAX` (REAL): Maximum latitude of BBOX.
   - `IRBB` (INTEGER): Specifies if the BBOX is calculated using differential solar rotation.
-  - `IS_TMFI` (INTEGER): Specifies if the magnetic field data is trusted.  
-
+  - `IS_TMFI` (INTEGER): Specifies if the magnetic field data is trusted.
 
 ### CMES_HARPS_EVENTS
 
@@ -127,16 +118,14 @@ This document provides a detailed description of each table and column in the CM
   - `flare_id` (INTEGER REFERENCES FLARES(flare_id)): Flare identifier.
   - `flare_hours_diff` (INTEGER NOT NULL): Hours difference between the CME and the flare.
   - `dimming_id` (INTEGER REFERENCES DIMMINGS(dimming_id)): Dimming identifier.
-  - `dimming_hours_diff` (INTEGER NOT NULL): Hours difference between the CME and the dimming.  
-
+  - `dimming_hours_diff` (INTEGER NOT NULL): Hours difference between the CME and the dimming.
 
 ### CMES_HARPS_SPATIALLY_CONSIST
 
 - **Description**: Contains spatially consistent associations between CMEs and HARP regions.
 - **Columns**:
   - `harpnum` (INTEGER NOT NULL REFERENCES HARPS(harpnum)): HARP region number.
-  - `cme_id` (INTEGER NOT NULL REFERENCES CMES(cme_id)): CME identifier.  
-
+  - `cme_id` (INTEGER NOT NULL REFERENCES CMES(cme_id)): CME identifier.
 
 ### DIMMINGS
 
@@ -149,20 +138,17 @@ This document provides a detailed description of each table and column in the CM
   - `dimming_peak_date` (TEXT NOT NULL): Peak date of the dimming event.
   - `dimming_lon` (REAL NOT NULL): Longitude of the dimming event.
   - `dimming_lat` (REAL NOT NULL): Latitude of the dimming event.
-  - `image_timestamp` (TEXT): Timestamp of the associated image.  
-
+  - `image_timestamp` (TEXT): Timestamp of the associated image.
 
 ### NOAA_HARPNUM_MAPPING
 
 - **Description**: Contains mapping between NOAA active regions and HARP regions.
 - **Columns**:
   - `noaa` (INTEGER): NOAA active region number.
-  - `harpnum` (INTEGER REFERENCES HARPS (harpnum)): HARP region number.  
-
+  - `harpnum` (INTEGER REFERENCES HARPS (harpnum)): HARP region number.
 
 ### NOAAS
 
 - **Description**: Contains a list of NOAA active regions.
 - **Columns**:
-  - `noaa` (INTEGER PRIMARY KEY): NOAA active region number.  
-
+  - `noaa` (INTEGER PRIMARY KEY): NOAA active region number.
