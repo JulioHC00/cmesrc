@@ -24,10 +24,10 @@ The script performs the following steps:
    - **Spatial Association**:
      - The script verifies if the identified flares and dimmings are spatially consistent with the CME based on their coordinates.
    - **Verification Level Determination**:
-     - The verification level is determined based on the presence of both flares and dimmings, and the intensity of the flares.
-     - Higher verification levels are assigned if both flares and dimmings are present and the flare intensity exceeds a predefined threshold.
+     - The verification score is determined based on the presence of both flares and dimmings, and the intensity of the flares.
+     - Higher verification scores are assigned if both flares and dimmings are present and the flare intensity exceeds a predefined threshold.
    - **Saving Associations**:
-     - The associations between CMEs, flares, and dimmings, along with their verification levels, are saved into the database for further analysis.
+     - The associations between CMEs, flares, and dimmings, along with their verification scores, are saved into the database for further analysis.
 
 ## Functions
 
@@ -49,11 +49,11 @@ The script performs the following steps:
   - Returns the formatted timestamp.
 
 - `get_verfification_level(has_dimming, has_flare, flare_class, flare_threshold=25)`:
-  - Determines the verification level based on the presence of dimmings and flares and the flare class.
+  - Determines the verification score based on the presence of dimmings and flares and the flare class.
   - Parameters:
     - `has_dimming` (bool): Indicates if a dimming is present.
     - `has_flare` (bool): Indicates if a flare is present.
     - `flare_class` (float): The flare class score.
     - `flare_threshold` (int): The threshold for the flare class score.
-  - Returns the verification level.
+  - Returns the verification score.
 
