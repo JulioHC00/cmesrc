@@ -18,7 +18,7 @@ Start by cloning the repository to your local machine. You can do this by runnin
 git clone https://github.com/JulioHC00/cmesrc.git
 ```
 
-Once you have the repository cloned, cd into the folder using `cd cmesrc` and run
+Once you have the repository cloned, cd into the folder using `cd cmesrc`. You should now download the `raw_data.zip` file from the zenodo repository and extract it into the `data/` folder. Now run
 
 ```bash
 make create_environment
