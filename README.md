@@ -75,9 +75,7 @@ In order to understand the association of a CME with a region (or why it wasn't 
 
 # Acknowledgements
 
-==============================
-RAW DATA SOURCES
-==============================
+## RAW DATA SOURCES
 
 DIMMINGS FOLDER
 
