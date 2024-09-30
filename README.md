@@ -6,7 +6,7 @@ This GitHub repository contains the source code for **NEED PAPER DOI**. We provi
 
 ## Downloading the results
 
-If you're just interested in the final list of CMEs matched to their source regions, you can either download the whole database from **MISSING LINK** or a .csv version that contains just the list of CMEs and their associated SHARPs from **MISSING_LINK**
+If you're just interested in the final list of CMEs matched to their source regions, you can either download the whole database from [https://zenodo.org/records/13150638](https://zenodo.org/records/13150638) or a .csv version that contains just the list of CMEs and their associated SHARPs from this repository.
 
 ## Reproducing our results
 
