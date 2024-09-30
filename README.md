@@ -74,3 +74,38 @@ In order to understand the association of a CME with a region (or why it wasn't 
 4. Using the rules described in the paper, all the pairs from the previous steps will be ranked. The highest ranking on will be recorded as the source and stored in `FINAL_CME_HARP_ASSOCIATIONS`. Note that if no pair had any signature, it won't be recorded.
 
 # Acknowledgements
+
+==============================
+RAW DATA SOURCES
+==============================
+
+DIMMINGS FOLDER
+
+Data is from Solar Demon, .csv was provided by Emil Kraaikamp through private communication.
+
+Solar Demon – an approach to detecting flares, dimmings, and EUV waves on SDO/AIA images
+Emil Kraaikamp, Cis Verbeeck
+J. Space Weather Space Clim. 5 A18 (2015)
+DOI: 10.1051/swsc/2015019
+
+HARPNUM_TO_NOAA FOLDER
+
+Obtained from http://jsoc.stanford.edu/doc/data/hmi/harpnum_to_noaa/all_harps_with_noaa_ars.txt
+
+LASCO FOLDER
+
+This CME catalog is generated and maintained at the CDAW Data Center by NASA and The Catholic University of America in cooperation with the Naval Research Laboratory. SOHO is a project of international cooperation between ESA and NASA.
+
+Downloaded from https://cdaw.gsfc.nasa.gov/CME_list/
+
+MVTS FOLDER
+
+Data from
+
+Angryk, R.A., Martens, P.C., Aydin, B. et al. Multivariate time series dataset for space weather data analytics. Sci Data 7, 227 (2020). https://doi.org/10.1038/s41597-020-0548-x
+
+Available at the Harvard Dataverse
+
+Angryk, Rafal; Martens, Petrus; Aydin, Berkay; Kempton, Dustin; Mahajan, Sushant; Basodi, Sunitha; Ahmadzadeh, Azim; Xumin Cai; Filali Boubrahimi, Soukaina; Hamdi, Shah Muhammad; Schuh, Micheal; Georgoulis, Manolis, 2020, "SWAN-SF", https://doi.org/10.7910/DVN/EBCFKM, Harvard Dataverse, V1
+
+The DT_SWAN folder contains the same data but with extra columns obtained directly from the Joint Science Operations Center (JSOC) through the python package drms.
